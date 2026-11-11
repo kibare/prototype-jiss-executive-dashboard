@@ -1,9 +1,14 @@
 // Fungsi tanggal bersama (PRD: satu fungsi hari kerja untuk semua modul, zona WIB).
 import type { Holiday } from './types';
 
-/** Tanggal simulasi prototipe. */
-export const TODAY = '2026-11-12';
-export const NOW = '2026-11-12 09:00';
+/** Tanggal simulasi prototipe. Bisa dimajukan lewat kontrol simulasi (live binding ES module). */
+export const SEED_TODAY = '2026-11-12';
+export let TODAY = SEED_TODAY;
+export let NOW = '2026-11-12 09:00';
+export const setToday = (d: string) => {
+  TODAY = d;
+  NOW = `${d} 09:00`;
+};
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 

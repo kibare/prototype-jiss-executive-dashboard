@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, ThumbsUp, Lock, AlertTriangle, FileEdit, Receipt } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { AttachmentChip, Badge, Btn, Card, DL, Money, PageHeader, Table, Td, cx, toast } from '../../ui/kit';
+import { AttachmentChip, Badge, Btn, Card, DL, Input, Money, PageHeader, Table, Td, cx, toast } from '../../ui/kit';
 import { ReasonModal } from '../../ui/ReasonModal';
 import { Link, navigate } from '../../router';
 import { NotFound } from '../Misc';
@@ -9,13 +9,14 @@ import { SPK_STATUS, SPK_TYPE } from '../../domain/labels';
 import { compareSpkFpk, compareSpkParent } from '../../domain/spk';
 import { MEMO_STATUS, MEMO_TYPE } from '../../domain/labels';
 import { settingNum } from '../../domain/settings';
-import { fpkCoverage, spkHeadcount } from '../../domain/selectors';
+import { effectiveContractOn, fpkCoverage, spkHeadcount } from '../../domain/selectors';
 import { TODAY, diffDays, fmtDate, fmtRp } from '../../domain/time';
 import { has } from '../../domain/rbac';
 
 export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
   const { lookups, access, me, actions, state } = useStore();
   const [modal, setModal] = useState<'salah' | 'benar' | 'tagih' | null>(null);
+  const [asOf, setAsOf] = useState(TODAY);
   const s = lookups.spk.get(id);
   const site = s ? lookups.site.get(s.siteId) : undefined;
   if (!s || !site || !access.area(site.areaId)) return <NotFound what="SPK" />;
@@ -27,10 +28,12 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
     company: (x: string) => lookups.company.get(x)?.name ?? '–', site: (x: string) => lookups.site.get(x)?.name ?? '–', position: (x: string) => lookups.position.get(x)?.name ?? '–',
     date: fmtDate, rp: fmtRp,
   };
-  const parentForCompare = !f && s.parentSpkId ? lookups.spk.get(s.parentSpkId) : undefined;
+  const parentForCompare = s.parentSpkId && (s.type === 'perpanjangan' || !f) ? lookups.spk.get(s.parentSpkId) : undefined;
   const agreedMemo = parentForCompare ? state.memos.find(m => m.spkId === parentForCompare.id && m.clientAnswer === 'setuju') : undefined;
   const memoV = agreedMemo?.versions[agreedMemo.versions.length - 1];
-  const diffs = f ? compareSpkFpk(s, f, names)
+  const others = f ? fpkCoverage(f, state.spks.filter(x => x.id !== s.parentSpkId || s.type !== 'addendum'), s.id) : null;
+  const coveredByOthers = new Map((others?.lines ?? []).map(x => [x.line.id, x.covered] as [string, number]));
+  const diffs = f && s.type !== 'perpanjangan' ? compareSpkFpk(s, f, coveredByOthers, names)
     : parentForCompare ? compareSpkParent(s, parentForCompare, memoV ? { periodStart: memoV.periodStart, periodEnd: memoV.periodEnd, value: memoV.newValue } : undefined, names) : [];
   const memos = state.memos.filter(m => m.spkId === s.id);
   const openMemo = memos.find(m => m.status !== 'dijawab');
@@ -42,6 +45,12 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
   const cov = f ? fpkCoverage(f, state.spks) : null;
   const daysRevision = s.verifiedAt ? diffDays(s.verifiedAt, TODAY) : 0;
   const parent = s.parentSpkId ? lookups.spk.get(s.parentSpkId) : undefined;
+  // Hari antara mulai jaga dan awal periode SPK tidak tertagih (perpanjangan tidak dihitung: mulai jaga milik SPK lama).
+  const unbilled = f?.startedAt && s.type !== 'perpanjangan' ? Math.max(0, diffDays(f.startedAt, s.periodStart)) : 0;
+  // Kontrak induk dan addendumnya: isi yang berlaku pada tanggal tertentu.
+  const root = s.type === 'addendum' && parent ? parent : s;
+  const addenda = state.spks.filter(x => x.type === 'addendum' && x.parentSpkId === root.id).sort((a, b) => (a.effectiveDate ?? a.periodStart).localeCompare(b.effectiveDate ?? b.periodStart));
+  const contract = addenda.length ? effectiveContractOn(root, state.spks, asOf || TODAY) : undefined;
 
   return (
     <div className="space-y-5">
@@ -93,7 +102,7 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5 min-w-0">
           {diffs.length > 0 && (
-            <Card title={f ? 'Perbandingan dengan FPK' : `Perbandingan dengan SPK induk ${parentForCompare?.number}${memoV ? ' dan memo yang disetujui klien' : ''}`} pad={false}>
+            <Card title={f && s.type !== 'perpanjangan' ? 'Perbandingan dengan FPK' : `Perbandingan dengan SPK induk ${parentForCompare?.number}${memoV ? ' dan memo yang disetujui klien' : ''}`} pad={false}>
               <Table head={['Field', 'SPK', f ? 'FPK' : 'Acuan', '']}>
                 {diffs.map((d, i) => (
                   <tr key={i} className={cx(!d.same && 'bg-rose-50/60')}>
@@ -121,6 +130,19 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               })}
             </Table>
           </Card>
+          {contract && (
+            <Card title="Isi kontrak yang berlaku" actions={<Input type="date" value={asOf} onChange={e => setAsOf(e.target.value)} className="w-40" aria-label="Tanggal acuan" />}>
+              <p className="text-sm text-slate-600 mb-3">
+                Pada {fmtDate(asOf || TODAY)} yang berlaku: <Link to={`/spk/${contract.id}`} className="font-semibold text-indigo-700 hover:underline">{contract.number}</Link>
+                {contract.type === 'addendum' ? ` (addendum, berlaku sejak ${fmtDate(contract.effectiveDate ?? contract.periodStart)})` : ' (SPK induk)'} · <Money value={contract.monthlyValue} clientId={contract.clientId} /> per bulan
+              </p>
+              <div className="text-sm mb-3">{contract.lines.map(l => `${l.qty} ${lookups.position.get(l.positionId)?.name} (${l.shift})`).join(', ')}</div>
+              <div className="text-xs text-slate-500 border-t border-slate-100 pt-2 space-y-1">
+                <div>Riwayat: {root.number} mulai {fmtDate(root.periodStart)}</div>
+                {addenda.map(a => <div key={a.id}><Link to={`/spk/${a.id}`} className="text-indigo-700 hover:underline">{a.number}</Link> berlaku {fmtDate(a.effectiveDate ?? a.periodStart)} · <Badge tone={SPK_STATUS[a.status].tone}>{SPK_STATUS[a.status].label}</Badge></div>)}
+              </div>
+            </Card>
+          )}
           {cov && f && (
             <Card title={`Cakupan kuota ${f.number}`}>
               <p className="text-sm text-slate-600 mb-2">{cov.done} dari {cov.total} orang tertutup SPK aktif. {cov.done < cov.total ? 'Sisanya masih jalan tanpa SPK.' : 'FPK selesai otomatis.'}</p>
@@ -140,6 +162,8 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               ['FPK induk', f ? <Link to={`/fpk/${f.id}`} className="text-indigo-700 hover:underline">{f.number}</Link> : 'Tanpa FPK (data awal)'],
               ...(parent ? [['SPK induk', <Link to={`/spk/${parent.id}`} className="text-indigo-700 hover:underline">{parent.number}</Link>] as [string, React.ReactNode]] : []),
               ['Diverifikasi', s.verifiedBy ? `${lookups.user.get(s.verifiedBy)?.name}, ${fmtDate(s.verifiedAt)} (${s.verdict})` : 'Belum'],
+              ...(unbilled ? [['Hari tidak tertagih', <span className="text-amber-700 font-semibold">{unbilled} hari (mulai jaga {fmtDate(f!.startedAt!)}, periode SPK mulai {fmtDate(s.periodStart)})</span>] as [string, React.ReactNode]] : []),
+              ...(s.lapsedFrom ? [['Jalan tanpa SPK', <span className="text-rose-700 font-semibold">sejak {fmtDate(s.lapsedFrom)} (SPK berakhir, site masih dijaga)</span>] as [string, React.ReactNode]] : []),
               ...(f?.startedAt && s.status === 'aktif' && s.verifiedAt ? [['KPI menunggu SPK', `${diffDays(f.startedAt, s.verifiedAt)} hari sejak mulai jaga`] as [string, string]] : []),
             ]} />
           </Card>

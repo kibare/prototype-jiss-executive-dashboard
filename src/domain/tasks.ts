@@ -28,6 +28,9 @@ export const escalationOf = (t: Task, settings: Setting[], holidays: Holiday[], 
   if (t.kind === 'catat_jawaban') {
     return overdue ? { overdue, daysLate: late, level: 2, label: 'Belum dijawab di H-30: eskalasi BOD' } : { overdue, daysLate: 0, level: 0 };
   }
+  if (t.kind === 'spk_berakhir_jaga') {
+    return overdue ? { overdue, daysLate: late, level: 2, label: 'Lewat batas: eskalasi BOD' } : { overdue, daysLate: 0, level: 0 };
+  }
   if (t.kind === 'urus_spk_salah') {
     return overdue ? { overdue, daysLate: late, level: 2, label: 'Lewat 14 hari: BOD turun tangan' } : { overdue, daysLate: 0, level: 0 };
   }
@@ -35,7 +38,21 @@ export const escalationOf = (t: Task, settings: Setting[], holidays: Holiday[], 
   if (t.assigneeRole === 'BOD') return { overdue, daysLate: late, level: 1, label: 'Lewat batas: muncul juga di wakil BOD' };
   const bodAt = addWorkdays(t.dueAt, settingNum(settings, 'escalation.bod_after_workdays', 2), holidays);
   if (diffDays(bodAt, today) >= 0) return { overdue, daysLate: late, level: 2, label: 'Naik ke BOD' };
-  return { overdue, daysLate: late, level: 1, label: 'Muncul di kepala divisi' };
+  return { overdue, daysLate: late, level: 1, label: t.assigneeRole === 'PIC Area' ? 'Muncul di kepala Operasional' : 'Muncul di kepala divisi' };
+};
+
+/** Peran kepala yang jadi tujuan eskalasi pertama. Tugas PIC area naik ke kepala Operasional (tabel notifikasi PRD). */
+export const escalationHeadRole = (r: Role): Role => (r === 'PIC Area' ? 'Operasional' : r);
+
+/**
+ * Wakil BOD boleh memutuskan atas nama BOD bila delegasi periode aktif,
+ * atau (mode tetap) bila tugas BOD-nya sudah lewat batas.
+ */
+export const deputyMayAct = (u: User, delegations: Delegation[], bodTask: Task | undefined, today = TODAY) => {
+  const d = delegations.find(x => x.deputyUserId === u.id && isDelegationActive(x, today));
+  if (!d) return false;
+  if (d.mode === 'periode') return true;
+  return !!bodTask && bodTask.status === 'terbuka' && diffDays(bodTask.dueAt, today) > 0;
 };
 
 export type TaskReason = 'milik' | 'peran' | 'eskalasi-kepala' | 'eskalasi-bod' | 'wakil';
@@ -48,6 +65,7 @@ export interface TaskCtx {
   creatorOf: (t: Task) => string | undefined;
   /** Area dokumen yang dirujuk tugas (untuk lingkup PIC Area / Operasional). */
   areaOf: (t: Task) => string | undefined;
+  users: User[];
 }
 
 /** Kenapa tugas ini muncul untuk user (atau null bila tidak). */
@@ -71,8 +89,12 @@ export const taskReason = (u: User, t: Task, ctx: TaskCtx): TaskReason | null =>
       // di luar lingkup
     } else return 'peran';
   }
-  if (esc.level >= 1 && u.headOf.includes(t.assigneeRole)) return 'eskalasi-kepala';
+  const headRole = escalationHeadRole(t.assigneeRole);
+  const hasHead = ctx.users.some(x => x.active && x.headOf.includes(headRole));
+  if (esc.level >= 1 && u.headOf.includes(headRole)) return 'eskalasi-kepala';
+  // Bila peran itu belum punya kepala divisi, eskalasi langsung ke BOD.
   if (esc.level >= 2 && has(u, 'BOD')) return 'eskalasi-bod';
+  if (esc.level >= 1 && !hasHead && has(u, 'BOD')) return 'eskalasi-bod';
   return null;
 };
 
@@ -122,5 +144,6 @@ export const TASK_KIND_LABEL: Record<Task['kind'], string> = {
   input_spk_perpanjangan: 'Input SPK perpanjangan',
   info_invoice_akhir: 'Invoice terakhir',
   cari_pengganti: 'Cari pengganti',
+  spk_berakhir_jaga: 'SPK berakhir, personel masih jaga',
   demobilisasi: 'Demobilisasi',
 };

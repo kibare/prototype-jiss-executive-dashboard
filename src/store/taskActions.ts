@@ -3,7 +3,7 @@ import type { Result, Tx } from './store';
 import { fail, ok } from './store';
 import type { PersonnelStatus, Task } from '../domain/types';
 import { NOW, TODAY } from '../domain/time';
-import { taskReason, type TaskCtx } from '../domain/tasks';
+import { taskReason, escalationHeadRole, type TaskCtx } from '../domain/tasks';
 import { has } from '../domain/rbac';
 
 /** Jenis tugas yang ditutup langsung dari kartunya (tanpa layar dokumen khusus). */
@@ -55,7 +55,7 @@ export function buildTaskActions(exec: (fn: (tx: Tx) => Result) => Result, ctx: 
     if (!t || t.status !== 'terbuka') return fail('Tugas sudah tidak terbuka.');
     const reason = taskReason(tx.me, t, ctx());
     if (!reason || reason === 'milik' || reason === 'peran') {
-      if (!(has(tx.me, 'BOD') || tx.me.headOf.includes(t.assigneeRole))) return fail('Hanya kepala divisi atau BOD yang bisa mengalihkan.');
+      if (!(has(tx.me, 'BOD') || tx.me.headOf.includes(escalationHeadRole(t.assigneeRole)))) return fail('Hanya kepala divisi atau BOD yang bisa mengalihkan.');
     }
     const target = tx.s.users.find(u => u.id === userId);
     if (!target || !target.roles.includes(t.assigneeRole)) return fail(`Pilih user dengan peran ${t.assigneeRole}.`);
@@ -89,11 +89,12 @@ export function buildTaskActions(exec: (fn: (tx: Tx) => Result) => Result, ctx: 
   });
 
   /** HR menindaklanjuti mutasi yang dibatalkan setelah personel dilepas. */
-  const restoreMutation = (fpkId: string, mode: 'kembali' | 'standby') => exec(tx => {
+  const restoreMutation = (fpkId: string, key: string, mode: 'kembali' | 'standby') => exec(tx => {
     if (!has(tx.me, 'HR')) return fail('Hanya HR.');
     const f = tx.s.fpks.find(x => x.id === fpkId);
-    if (!f?.mutation?.cancelled) return fail('Tidak ada mutasi batal.');
-    f.mutation.releasedIds.forEach(id => {
+    const m = f?.mutations?.[key];
+    if (!f || !m?.cancelled || m.restored) return fail('Tidak ada mutasi batal yang menunggu.');
+    m.releasedIds.forEach(id => {
       const p = tx.s.personnel.find(x => x.id === id)!;
       if (mode === 'kembali') p.status = 'aktif';
       else {
@@ -102,7 +103,8 @@ export function buildTaskActions(exec: (fn: (tx: Tx) => Result) => Result, ctx: 
         p.status = 'standby';
       }
     });
-    tx.closeTasks(t => t.refId === f.id && t.kind === 'ubah_penempatan' && t.title.startsWith('Mutasi dibatalkan'));
+    m.restored = true;
+    tx.closeTasks(t => t.refId === f.id && t.kind === 'ubah_penempatan' && t.subKey === key && t.title.startsWith('Mutasi dibatalkan'));
     tx.audit({ entity: 'mutasi', entityId: f.id, action: mode === 'kembali' ? 'Personel dikembalikan ke penempatan asal' : 'Personel dijadikan standby' });
     return ok();
   });

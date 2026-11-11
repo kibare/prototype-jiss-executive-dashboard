@@ -13,6 +13,8 @@ export interface FieldDiff {
 export const compareSpkFpk = (
   s: Spk,
   f: Fpk,
+  /** Jumlah orang per baris FPK yang sudah tertutup SPK aktif lain (tanpa SPK ini dan SPK induk bila ini addendum). */
+  coveredByOthers: Map<string, number>,
   names: { company: (id: string) => string; site: (id: string) => string; position: (id: string) => string; date: (d: string) => string; rp: (n: number) => string },
 ): FieldDiff[] => {
   const v = latest(f);
@@ -35,11 +37,12 @@ export const compareSpkFpk = (
   ];
   s.lines.forEach(l => {
     const fl = v.lines.find(x => x.id === l.fpkLineId);
+    const left = fl ? fl.qty - (coveredByOthers.get(fl.id) ?? 0) : 0;
     rows.push({
       field: `Baris: ${names.position(l.positionId)} · ${l.shift}`,
       spk: `${l.qty} orang`,
-      fpk: fl ? `${names.position(fl.positionId)} · ${fl.shift} · ${fl.qty} orang` : 'tidak ada baris FPK yang cocok',
-      same: !!fl && fl.positionId === l.positionId && fl.shift === l.shift && l.qty <= fl.qty,
+      fpk: fl ? `${names.position(fl.positionId)} · ${fl.shift} · sisa ${left} dari ${fl.qty} orang` : 'tidak ada baris FPK yang cocok',
+      same: !!fl && fl.positionId === l.positionId && fl.shift === l.shift && l.qty <= left,
     });
   });
   return rows;

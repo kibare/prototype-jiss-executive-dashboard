@@ -32,3 +32,54 @@ export const settingNum = (settings: Setting[], key: string, fallback: number) =
   const n = s ? parseInt(s.value, 10) : NaN;
   return Number.isFinite(n) ? n : fallback;
 };
+
+/** Validasi nilai pengaturan per kunci. Mengembalikan pesan galat atau null bila valid. */
+export const validateSetting = (key: string, raw: string): string | null => {
+  const v = raw.trim();
+  if (!v) return 'Nilai tidak boleh kosong.';
+  const int = (min: number, max: number) => {
+    if (!/^\d+$/.test(v)) return 'Isi dengan bilangan bulat.';
+    const n = parseInt(v, 10);
+    return n < min || n > max ? `Isi antara ${min} dan ${max}.` : null;
+  };
+  switch (key) {
+    case 'spk.chase_reminder_days': {
+      const parts = v.split(',').map(x => x.trim());
+      if (parts.some(x => !/^\d+$/.test(x))) return 'Isi daftar hari dipisah koma, mis. 7, 14, 21.';
+      const ns = parts.map(Number);
+      if (ns.some((n, i) => n < 1 || (i > 0 && n <= ns[i - 1]))) return 'Hari harus lebih dari 0 dan berurutan naik.';
+      return null;
+    }
+    case 'personnel.register_due':
+      return /^H-\d+$/.test(v) ? null : 'Format H-n, mis. H-1.';
+    case 'notif.daily_digest_time': {
+      const m = v.match(/^(\d{2}):(\d{2}) WIB$/);
+      return m && +m[1] < 24 && +m[2] < 60 ? null : 'Format HH:MM WIB, mis. 07:00 WIB.';
+    }
+    case 'doc.number_format':
+      return v.includes('URUT') ? null : 'Format nomor wajib memuat URUT (nomor urut).';
+    case 'margin.minimum_pct':
+      return int(0, 100);
+    case 'memo.start_days_before_end':
+    case 'memo.send_deadline_days_before_end':
+    case 'memo.answer_deadline_days_before_end':
+    case 'client.payment_terms_days':
+    case 'spk.wrong_escalate_days':
+    case 'spk.without_spk_escalate_days':
+      return int(1, 365);
+    case 'audit.retention_years':
+      return int(1, 30);
+    case 'session.idle_timeout_hours':
+      return int(1, 72);
+    default:
+      // Sisanya batas hari kerja.
+      return int(1, 60);
+  }
+};
+
+/** Urutan H-n memo harus masuk akal: mulai > kirim > jawab. */
+export const validateMemoOrder = (settings: Setting[]): string | null => {
+  const g = (k: string, fb: number) => settingNum(settings, k, fb);
+  const start = g('memo.start_days_before_end', 75), send = g('memo.send_deadline_days_before_end', 60), answer = g('memo.answer_deadline_days_before_end', 30);
+  return start > send && send > answer ? null : 'Urutan memo harus: tugas memo (H-75) > batas kirim (H-60) > batas jawaban (H-30).';
+};

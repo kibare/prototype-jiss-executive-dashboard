@@ -7,8 +7,13 @@ import { settingNum } from '../domain/settings';
 import { resolveAssignee } from '../domain/tasks';
 import { CHECK_DIVISIONS, rereviewPlan } from '../domain/fpk';
 import { isPricedKind } from '../domain/seed';
-import { activeByPosition, quotaByPosition, latest } from '../domain/selectors';
+import { activeByPosition, quotaByPosition, latest, fpkCoverage } from '../domain/selectors';
 import { has, isDeputy } from '../domain/rbac';
+import { deputyMayAct } from '../domain/tasks';
+
+/** Sumber mutasi per baris FPK, dengan kunci stabil (id baris + urutan sumber). */
+export const mutationSources = (v: FpkVersion) =>
+  v.lines.flatMap(l => l.sources.map((src, i) => ({ ...src, key: `${l.id}:${i}`, positionId: l.positionId }))).filter(x => x.kind === 'mutasi');
 
 export interface FpkInput {
   type: FpkType;
@@ -166,6 +171,15 @@ const nextNumber = (tx: Tx, prefix: string, existing: string[]) => {
   return `${prefix}/${year}/${String(max + 1).padStart(4, '0')}`;
 };
 
+/** Wakil BOD hanya bisa memutuskan bila delegasi periode aktif, atau (delegasi tetap) tugas BOD-nya sudah lewat batas. */
+const DEPUTY_WAIT = 'Wakil BOD baru bisa memutuskan setelah tugas BOD lewat batas (delegasi tetap) atau saat delegasi periode aktif.';
+const deputyBlocked = (tx: Tx, refId: string, kind: 'setujui_fpk' | 'setujui_memo') => {
+  if (has(tx.me, 'BOD')) return false;
+  const task = tx.s.tasks.find(t => t.refId === refId && t.kind === kind && t.status === 'terbuka');
+  return !deputyMayAct(tx.me, tx.s.delegations, task);
+};
+
+export { deputyBlocked, DEPUTY_WAIT };
 export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
   /** Simpan draf FPK (baru atau ubah draf). */
   const saveFpkDraft = (input: FpkInput, fpkId?: string) => exec(tx => {
@@ -220,6 +234,8 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     const plan = rereviewPlan(f, prev, next);
     f.versions.push(next);
     f.type = input.type;
+    // Tanda tidak layak berlaku untuk versi yang dicek; versi baru dicek ulang (riwayatnya tetap di daftar review).
+    f.notFeasible = undefined;
     tx.closeTasks(t => t.refId === f.id && t.kind === 'perbaiki_fpk');
     tx.audit({ entity: 'fpk', entityId: f.id, action: `Versi ${next.no} dibuat`, after: plan.reasons.join('; ') });
     if (plan.notifyOnly) tx.notify(`${f.number}: tanggal mulai dimundurkan ke ${fmtDate(next.plannedStart)}.`, stakeholders(tx, f), { refType: 'fpk', refId: f.id });
@@ -308,6 +324,7 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (from === 'BOD') {
       if (f.status !== 'menunggu_bod') return fail('FPK tidak menunggu BOD.');
       if (!(has(tx.me, 'BOD') || isDeputy(tx.me, tx.s.delegations))) return fail('Hanya BOD atau wakil.');
+      if (deputyBlocked(tx, f.id, 'setujui_fpk')) return fail(DEPUTY_WAIT);
       if (f.createdBy === tx.me.id) return fail('Pembuat FPK tidak bisa memutuskan FPK-nya sendiri.');
     } else {
       const e = canCheck(tx, f, from);
@@ -315,7 +332,7 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     }
     const prevStatus = f.status;
     if (from === 'BOD') {
-      f.bodDecision = { decision: 'kembalikan', by: tx.me.id, onBehalfOf: has(tx.me, 'BOD') ? undefined : 'u-bod', note: reason, at: NOW };
+      f.bodDecision = { decision: 'kembalikan', by: tx.me.id, onBehalfOf: has(tx.me, 'BOD') ? undefined : tx.s.delegations.find(d => d.deputyUserId === tx.me.id)?.bodUserId, note: reason, at: NOW };
     } else {
       f.reviews.push({ versionNo: latest(f).no, division: from, result: 'kembalikan', note: reason, actorId: tx.me.id, at: NOW });
     }
@@ -371,6 +388,7 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (!f || f.status !== 'menunggu_bod') return fail('FPK tidak menunggu keputusan BOD.');
     const deputy = !has(tx.me, 'BOD') && isDeputy(tx.me, tx.s.delegations);
     if (!has(tx.me, 'BOD') && !deputy) return fail('Hanya BOD atau wakil.');
+    if (deputy && deputyBlocked(tx, f.id, 'setujui_fpk')) return fail(DEPUTY_WAIT);
     if (f.createdBy === tx.me.id) return fail('Pembuat FPK tidak bisa menyetujui FPK-nya sendiri. Persetujuan pindah ke BOD.');
     if (decision === 'tolak' && !note.trim()) return fail('Alasan wajib diisi untuk menolak.');
     if (f.notFeasible && decision === 'setujui' && !note.trim()) return fail('FPK ini ditandai tidak layak: setujui dengan catatan.');
@@ -391,7 +409,6 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     const sum = (k: FpkLineSource['kind']) => v.lines.flatMap(l => l.sources).filter(s => s.kind === k).reduce((n, s) => n + s.qty, 0);
     const rekrut = sum('rekrut') + sum('takeover');
     const standby = sum('standby');
-    const mutasi = v.lines.flatMap(l => l.sources).filter(s => s.kind === 'mutasi');
     if (rekrut > 0) {
       tx.addTask({ kind: 'serah_hr', title: `Serahkan ${rekrut} calon personel ke HR — ${f.number}`, refType: 'fpk', refId: f.id, assigneeRole: 'Recruitment', assigneeUserId: assigneeFor(tx, f, 'Recruitment'), dueAt: hMinus1Due(tx, v.plannedStart) });
     } else f.handedToHr = true;
@@ -399,9 +416,9 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
       tx.addTask({ kind: 'ubah_penempatan', title: `Tempatkan ${standby} personel standby — ${f.number}`, refType: 'fpk', refId: f.id, assigneeRole: 'HR', assigneeUserId: headOf(tx, 'HR'), dueAt: hMinus1Due(tx, v.plannedStart) });
     }
     if (!rekrut) f.registered = true;
-    mutasi.forEach(m => {
+    mutationSources(v).forEach(m => {
       const fromArea = tx.s.areas.find(a => a.id === m.fromAreaId);
-      tx.addTask({ kind: 'lepas_mutasi', title: `Lepas ${m.qty} personel dari ${fromArea?.name} untuk mutasi — ${f.number}`, refType: 'fpk', refId: f.id, assigneeRole: 'Operasional', assigneeUserId: opsForArea(tx, m.fromAreaId!), division: 'Operasional', dueAt: hMinus1Due(tx, v.plannedStart) });
+      tx.addTask({ kind: 'lepas_mutasi', title: `Lepas ${m.qty} personel dari ${fromArea?.name}${m.fromSiteId ? ` (${siteOf(tx, m.fromSiteId)?.name})` : ''} untuk mutasi — ${f.number}`, refType: 'fpk', refId: f.id, subKey: m.key, assigneeRole: 'Operasional', assigneeUserId: opsForArea(tx, m.fromAreaId!), division: 'Operasional', dueAt: hMinus1Due(tx, v.plannedStart) });
     });
     const area = tx.s.areas.find(a => a.id === siteOf(tx, v.siteId)?.areaId);
     tx.addTask({ kind: 'mulai_jaga', title: `Konfirmasi mulai jaga di ${siteOf(tx, v.siteId)?.name} — ${f.number}`, refType: 'fpk', refId: f.id, assigneeRole: 'PIC Area', assigneeUserId: area?.picUserId, dueAt: v.plannedStart });
@@ -430,6 +447,22 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     return ok();
   });
 
+  /** Marketing pembuat membatalkan FPK yang masih draf atau dikembalikan (belum masuk proses persetujuan). */
+  const cancelDraft = (fpkId: string, reason: string) => exec(tx => {
+    const f = fpkOf(tx, fpkId);
+    if (!f) return fail('FPK tidak ditemukan.');
+    if (f.createdBy !== tx.me.id) return fail('Hanya pembuat FPK yang bisa membatalkan drafnya.');
+    if (f.status !== 'draf' && f.status !== 'dikembalikan') return fail('Hanya FPK draf atau dikembalikan yang bisa dibatalkan Marketing. Selebihnya lewat BOD.');
+    if (!reason.trim()) return fail('Alasan wajib diisi.');
+    const prev = f.status;
+    f.status = 'batal';
+    f.cancelled = { by: tx.me.id, reason, at: NOW };
+    tx.closeTasks(t => t.refId === f.id, 'dibatalkan');
+    tx.audit({ entity: 'fpk', entityId: f.id, action: `Status FPK: ${prev} → batal (oleh pembuat)`, after: reason });
+    if (prev === 'dikembalikan') tx.notify(`${f.number} dibatalkan oleh pembuatnya: ${reason}`, stakeholders(tx, f), { refType: 'fpk', refId: f.id });
+    return ok();
+  });
+
   /** PIC area mengonfirmasi mulai jaga: titik awal hitungan jalan tanpa SPK. */
   const confirmStart = (fpkId: string) => exec(tx => {
     const f = fpkOf(tx, fpkId);
@@ -438,6 +471,8 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     const site = siteOf(tx, v.siteId);
     if (!has(tx.me, 'PIC Area') || !site || !tx.me.areaIds.includes(site.areaId)) return fail('Mulai jaga hanya bisa dikonfirmasi PIC area dari area site ini.');
     if (diffDays(v.plannedStart, TODAY) < 0) return fail(`Mulai jaga baru bisa dikonfirmasi pada ${fmtDate(v.plannedStart)}.`);
+    const notReady = tx.s.personnel.filter(p => p.status === 'calon' && p.placements.some(x => x.fpkId === f.id && !x.end)).length;
+    const pendingNote = notReady ? `${notReady} calon belum ditandai terdaftar HR, belum dihitung aktif` : '';
     f.status = 'berjalan';
     f.startedAt = TODAY;
     let n = 0;
@@ -447,13 +482,19 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     });
     tx.closeTasks(t => t.refId === f.id && t.kind === 'mulai_jaga');
     const client = tx.s.clients.find(c => c.id === v.clientId);
-    tx.addTask({
-      kind: 'kejar_spk', title: `Kejar SPK ${site.name} (jalan tanpa SPK sejak ${fmtDate(TODAY)})`, refType: 'fpk', refId: f.id,
-      assigneeRole: 'Marketing', assigneeUserId: client?.accountOwnerId, dueAt: addDays(TODAY, num(tx, 'spk.without_spk_escalate_days', 30)),
-      customEscalation: 'Pengingat hari ke-7, 14, 21; BOD di hari ke-30',
-    });
-    tx.audit({ entity: 'fpk', entityId: f.id, action: 'Status FPK: disetujui → berjalan (mulai jaga)', after: `${n} personel aktif` });
-    tx.notify(`Mulai jaga ${site.name} dikonfirmasi. Hitungan jalan tanpa SPK dimulai.`, [client?.accountOwnerId, ...stakeholders(tx, f)], { refType: 'fpk', refId: f.id });
+    // SPK bisa saja sudah aktif sebelum mulai jaga: status ikut cakupan kuota.
+    const cov = fpkCoverage(f, tx.s.spks);
+    if (cov.done >= cov.total && cov.total > 0) f.status = 'selesai';
+    else if (cov.done > 0) f.status = 'tertutup_sebagian';
+    if (f.status !== 'selesai') {
+      tx.addTask({
+        kind: 'kejar_spk', title: `Kejar SPK ${site.name} (jalan tanpa SPK sejak ${fmtDate(TODAY)})`, refType: 'fpk', refId: f.id,
+        assigneeRole: 'Marketing', assigneeUserId: client?.accountOwnerId, dueAt: addDays(TODAY, num(tx, 'spk.without_spk_escalate_days', 30)),
+        customEscalation: 'Pengingat hari ke-7, 14, 21; BOD di hari ke-30', remindersSent: [],
+      });
+    }
+    tx.audit({ entity: 'fpk', entityId: f.id, action: `Status FPK: disetujui → ${f.status.replace('_', ' ')} (mulai jaga)`, after: `${n} personel aktif${pendingNote ? `; ${pendingNote}` : ''}` });
+    tx.notify(f.status === 'selesai' ? `Mulai jaga ${site.name} dikonfirmasi. SPK sudah aktif, tidak ada jalan tanpa SPK.` : `Mulai jaga ${site.name} dikonfirmasi. Hitungan jalan tanpa SPK dimulai.`, [client?.accountOwnerId, ...stakeholders(tx, f)], { refType: 'fpk', refId: f.id });
     return ok();
   });
 
@@ -514,13 +555,15 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     return ok();
   });
 
-  const releaseForMutation = (fpkId: string, personnelIds: string[], effectiveDate: string) => exec(tx => {
+  const releaseForMutation = (fpkId: string, key: string, personnelIds: string[], effectiveDate: string) => exec(tx => {
     const f = fpkOf(tx, fpkId);
     if (!f || f.status !== 'disetujui') return fail('FPK tidak dalam status disetujui.');
     if (!has(tx.me, 'Operasional')) return fail('Hanya Operasional.');
     const v = latest(f);
-    const src = v.lines.flatMap(l => l.sources).find(s => s.kind === 'mutasi');
-    if (!src) return fail('FPK ini tidak punya sumber mutasi.');
+    const src = mutationSources(v).find(m => m.key === key);
+    if (!src) return fail('Sumber mutasi tidak ditemukan.');
+    if (!tx.me.areaIds.includes(src.fromAreaId!)) return fail('Hanya Operasional area asal yang bisa melepas personel.');
+    if (f.mutations?.[key]) return fail('Personel untuk sumber ini sudah dilepas.');
     if (personnelIds.length !== src.qty) return fail(`Pilih tepat ${src.qty} personel sesuai jumlah di FPK.`);
     if (!effectiveDate) return fail('Isi tanggal efektif.');
     for (const id of personnelIds) {
@@ -528,59 +571,61 @@ export function buildFpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
       if (!p || p.status !== 'aktif') return fail('Personel yang sedang dalam mutasi atau tidak aktif tidak bisa dipilih.');
     }
     personnelIds.forEach(id => { tx.s.personnel.find(x => x.id === id)!.status = 'dalam_mutasi'; });
-    f.mutation = { releasedIds: personnelIds, effectiveDate, placed: false };
-    tx.closeTasks(t => t.refId === f.id && t.kind === 'lepas_mutasi');
-    tx.addTask({ kind: 'ubah_penempatan', title: `Ubah penempatan ${personnelIds.length} personel mutasi — ${f.number}`, refType: 'fpk', refId: f.id, assigneeRole: 'HR', assigneeUserId: headOf(tx, 'HR'), dueAt: hMinus1Due(tx, effectiveDate) });
+    f.mutations = { ...(f.mutations ?? {}), [key]: { fromAreaId: src.fromAreaId!, fromSiteId: src.fromSiteId, qty: src.qty, releasedIds: personnelIds, effectiveDate, placed: false } };
+    tx.closeTasks(t => t.refId === f.id && t.kind === 'lepas_mutasi' && (t.subKey === key || !t.subKey));
     const fromArea = tx.s.areas.find(a => a.id === src.fromAreaId)!;
+    tx.addTask({ kind: 'ubah_penempatan', title: `Ubah penempatan ${personnelIds.length} personel mutasi dari ${fromArea.name} — ${f.number}`, refType: 'fpk', refId: f.id, subKey: key, assigneeRole: 'HR', assigneeUserId: headOf(tx, 'HR'), dueAt: hMinus1Due(tx, effectiveDate) });
     const toArea = tx.s.areas.find(a => a.id === siteOf(tx, v.siteId)?.areaId);
     tx.notify(`Mutasi ${personnelIds.length} personel dari ${fromArea.name} ke ${toArea?.name} efektif ${fmtDate(effectiveDate)}. Pindahkan lokasi di aplikasi absensi.`, [fromArea.picUserId, toArea?.picUserId], { refType: 'fpk', refId: f.id });
-    tx.audit({ entity: 'mutasi', entityId: f.id, action: `Operasional melepas ${personnelIds.length} personel`, after: `Efektif ${fmtDate(effectiveDate)}` });
-    // Cek kuota area asal setelah dilepas.
-    const siteIds = new Set(tx.s.sites.filter(s => s.areaId === fromArea.id).map(s => s.id));
+    tx.audit({ entity: 'mutasi', entityId: f.id, action: `Operasional melepas ${personnelIds.length} personel dari ${fromArea.name}`, after: `Efektif ${fmtDate(effectiveDate)}` });
+    // Cek kuota lokasi asal (site bila diisi, kalau tidak area) setelah dilepas.
+    const siteIds = new Set(tx.s.sites.filter(s => (src.fromSiteId ? s.id === src.fromSiteId : s.areaId === fromArea.id)).map(s => s.id));
     const quota = [...quotaByPosition(tx.s.spks, siteIds).values()].reduce((a, b) => a + b, 0);
-    const actual = [...activeByPosition(tx.s.personnel, fromArea.id).values()].reduce((a, b) => a + b, 0);
+    const actual = [...activeByPosition(tx.s.personnel, fromArea.id, src.fromSiteId).values()].reduce((a, b) => a + b, 0);
     if (actual < quota) {
       const due = wd(tx, num(tx, 'mutation.replacement_due_workdays', 5));
-      const t = `Lokasi asal ${fromArea.name} kurang ${quota - actual} orang: cari pengganti`;
-      tx.addTask({ kind: 'cari_pengganti', title: t, refType: 'fpk', refId: f.id, assigneeRole: 'Operasional', assigneeUserId: opsForArea(tx, fromArea.id), division: 'Operasional', dueAt: due });
-      tx.addTask({ kind: 'cari_pengganti', title: t, refType: 'fpk', refId: f.id, assigneeRole: 'Recruitment', assigneeUserId: headOf(tx, 'Recruitment'), division: 'Recruitment', dueAt: due });
-      tx.audit({ entity: 'mutasi', entityId: f.id, action: `Area asal ${fromArea.name} di bawah kuota`, after: `Kurang ${quota - actual} orang` });
+      const where = src.fromSiteId ? siteOf(tx, src.fromSiteId)?.name : fromArea.name;
+      const t = `Lokasi asal ${where} kurang ${quota - actual} orang: cari pengganti`;
+      tx.addTask({ kind: 'cari_pengganti', title: t, refType: 'fpk', refId: f.id, subKey: key, assigneeRole: 'Operasional', assigneeUserId: opsForArea(tx, fromArea.id), division: 'Operasional', dueAt: due });
+      tx.addTask({ kind: 'cari_pengganti', title: t, refType: 'fpk', refId: f.id, subKey: key, assigneeRole: 'Recruitment', assigneeUserId: headOf(tx, 'Recruitment'), division: 'Recruitment', dueAt: due });
+      tx.audit({ entity: 'mutasi', entityId: f.id, action: `Lokasi asal ${where} di bawah kuota`, after: `Kurang ${quota - actual} orang` });
     }
     return ok();
   });
 
-  const placeMutation = (fpkId: string) => exec(tx => {
+  const placeMutation = (fpkId: string, key: string) => exec(tx => {
     const f = fpkOf(tx, fpkId);
-    if (!f?.mutation || f.mutation.placed) return fail('Tidak ada mutasi yang menunggu.');
+    const m = f?.mutations?.[key];
+    if (!f || !m || m.placed || m.cancelled) return fail('Tidak ada mutasi yang menunggu.');
     if (!has(tx.me, 'HR')) return fail('Hanya HR.');
-    const v = latest(f);
-    const site = siteOf(tx, v.siteId)!;
-    f.mutation.releasedIds.forEach(id => {
+    const site = siteOf(tx, latest(f).siteId)!;
+    m.releasedIds.forEach(id => {
       const p = tx.s.personnel.find(x => x.id === id)!;
-      p.placements.forEach(pl => { if (!pl.end) pl.end = f.mutation!.effectiveDate; });
-      p.placements.push({ areaId: site.areaId, siteId: site.id, fpkId: f.id, start: f.mutation!.effectiveDate });
+      p.placements.forEach(pl => { if (!pl.end) pl.end = m.effectiveDate; });
+      p.placements.push({ areaId: site.areaId, siteId: site.id, fpkId: f.id, start: m.effectiveDate });
       p.status = 'terdaftar';
     });
-    f.mutation.placed = true;
-    tx.closeTasks(t => t.refId === f.id && t.kind === 'ubah_penempatan' && t.title.includes('mutasi'));
-    tx.audit({ entity: 'mutasi', entityId: f.id, action: `HR mengubah penempatan ${f.mutation.releasedIds.length} personel ke ${site.name}` });
+    m.placed = true;
+    tx.closeTasks(t => t.refId === f.id && t.kind === 'ubah_penempatan' && t.subKey === key);
+    tx.audit({ entity: 'mutasi', entityId: f.id, action: `HR mengubah penempatan ${m.releasedIds.length} personel ke ${site.name}` });
     return ok();
   });
 
-  const cancelMutation = (fpkId: string) => exec(tx => {
+  const cancelMutation = (fpkId: string, key: string) => exec(tx => {
     const f = fpkOf(tx, fpkId);
-    if (!f?.mutation || f.mutation.placed || f.mutation.cancelled) return fail('Tidak ada mutasi yang bisa dibatalkan.');
+    const m = f?.mutations?.[key];
+    if (!f || !m || m.placed || m.cancelled) return fail('Tidak ada mutasi yang bisa dibatalkan.');
     if (!has(tx.me, 'Operasional')) return fail('Hanya Operasional.');
-    f.mutation.cancelled = true;
-    tx.closeTasks(t => t.refId === f.id && t.kind === 'ubah_penempatan' && t.title.includes('mutasi'), 'dibatalkan');
-    tx.addTask({ kind: 'ubah_penempatan', title: `Mutasi dibatalkan: kembalikan ${f.mutation.releasedIds.length} personel ke penempatan asal atau jadikan standby — ${f.number}`, refType: 'fpk', refId: f.id, assigneeRole: 'HR', assigneeUserId: headOf(tx, 'HR'), dueAt: wd(tx, 1) });
+    m.cancelled = true;
+    tx.closeTasks(t => t.refId === f.id && t.kind === 'ubah_penempatan' && t.subKey === key, 'dibatalkan');
+    tx.addTask({ kind: 'ubah_penempatan', title: `Mutasi dibatalkan: kembalikan ${m.releasedIds.length} personel ke penempatan asal atau jadikan standby — ${f.number}`, refType: 'fpk', refId: f.id, subKey: key, assigneeRole: 'HR', assigneeUserId: headOf(tx, 'HR'), dueAt: wd(tx, 1) });
     tx.audit({ entity: 'mutasi', entityId: f.id, action: 'Mutasi dibatalkan setelah personel dilepas' });
     return ok();
   });
 
   return {
     saveFpkDraft, submitFpk, submitNewVersion, reviewOps, reviewRecruitment, reviewProcurement, returnFpk, markNotFeasible,
-    marginCheck, bodDecide, cancelFpk, confirmStart, handOverToHr, registerPersonnel, placeStandby, releaseForMutation, placeMutation, cancelMutation,
+    marginCheck, bodDecide, cancelFpk, cancelDraft, confirmStart, handOverToHr, registerPersonnel, placeStandby, releaseForMutation, placeMutation, cancelMutation,
   };
 }
 

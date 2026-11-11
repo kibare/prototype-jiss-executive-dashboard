@@ -39,7 +39,7 @@ export const AuditPage: React.FC = () => {
             <tr key={a.id}>
               <Td className="whitespace-nowrap text-xs">{fmtDateTime(a.at)}</Td>
               <Td className="text-xs">
-                {lookups.user.get(a.actorId)?.name}
+                {lookups.user.get(a.actorId)?.name ?? (a.actorId === 'sistem' ? 'Sistem (job harian)' : a.actorId)}
                 {a.onBehalfOfId && <div className="text-slate-500">atas nama {lookups.user.get(a.onBehalfOfId)?.name}</div>}
               </Td>
               <Td className="text-xs"><span className="font-semibold">{a.entity}</span><div className="font-mono text-slate-400">{a.entityId}</div></Td>

@@ -7,7 +7,7 @@ import { Link, navigate } from '../../router';
 import { NotFound } from '../Misc';
 import { FPK_STATUS, FPK_TYPE, SOURCE_LABEL, SPK_STATUS } from '../../domain/labels';
 import { fpkCoverage, latest, withoutSpkList } from '../../domain/selectors';
-import { fmtDate, fmtDateTime } from '../../domain/time';
+import { diffDays, fmtDate, fmtDateTime } from '../../domain/time';
 import { settingNum } from '../../domain/settings';
 import { has, isDeputy } from '../../domain/rbac';
 import { FpkActionPanel } from './FpkActionPanel';
@@ -38,7 +38,7 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
   const { state, lookups, access, me, actions } = useStore();
   const f = lookups.fpk.get(id);
   const [viewNo, setViewNo] = useState<number | null>(null);
-  const [modal, setModal] = useState<'batal' | null>(null);
+  const [modal, setModal] = useState<'batal' | 'batal-draf' | null>(null);
   if (!f) return <NotFound what="FPK" />;
   const cur = latest(f);
   const site = lookups.site.get(cur.siteId);
@@ -74,6 +74,7 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
             <Btn size="sm" icon={<Send className="w-3.5 h-3.5" />} onClick={() => { const r = actions.submitFpk(f.id); if (r.ok) toast('Dikirim ke cek 3 divisi'); else toast(r.error, 'err'); }}>Kirim ke cek</Btn>
           </>}
           {f.status === 'dikembalikan' && isOwner && <Btn size="sm" icon={<FilePlus2 className="w-3.5 h-3.5" />} onClick={() => navigate(`/fpk/${f.id}/ubah`)}>Buat versi {cur.no + 1}</Btn>}
+          {(f.status === 'draf' || f.status === 'dikembalikan') && f.createdBy === me.id && <Btn size="sm" variant="ghost" icon={<Ban className="w-3.5 h-3.5" />} onClick={() => setModal('batal-draf')}>Batalkan draf</Btn>}
           {bodLike && !['selesai', 'ditolak', 'batal', 'draf'].includes(f.status) && <Btn size="sm" variant="secondary" icon={<Ban className="w-3.5 h-3.5" />} onClick={() => setModal('batal')}>Batalkan FPK</Btn>}
         </>}
       />
@@ -169,6 +170,11 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               </Table>
               {spks.length === 0 && <p className="text-sm text-slate-500 p-4">Belum ada SPK.</p>}
               {spks.length > 0 && <p className="text-xs text-slate-500 px-4 py-3 border-t border-slate-100">Kuota tertutup SPK aktif: {cov.done} dari {cov.total} orang.</p>}
+              {f.startedAt && spks.filter(s => s.type !== 'perpanjangan' && ['aktif', 'berakhir'].includes(s.status) && diffDays(f.startedAt!, s.periodStart) > 0).map(s => (
+                <p key={s.id} className="text-xs text-amber-800 bg-amber-50 px-4 py-2 border-t border-amber-100">
+                  {s.number}: {diffDays(f.startedAt!, s.periodStart)} hari tidak tertagih (mulai jaga {fmtDate(f.startedAt!)}, periode SPK mulai {fmtDate(s.periodStart)}).
+                </p>
+              ))}
             </Card>
           )}
         </div>
@@ -218,6 +224,11 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
         <ReasonModal title={`Batalkan ${f.number}`} label="Alasan" confirm="Batalkan FPK" variant="danger"
           hint="Semua tugas terbuka dibatalkan. Bila personel sudah dikerahkan, tugas demobilisasi dibuat untuk Operasional dan HR."
           onClose={() => setModal(null)} onSubmit={t => { const r = actions.cancelFpk(f.id, t); if (r.ok) toast('FPK dibatalkan'); return r; }} />
+      )}
+      {modal === 'batal-draf' && (
+        <ReasonModal title={`Batalkan ${f.number}`} label="Alasan" confirm="Batalkan draf" variant="danger"
+          hint="FPK ditandai batal dan tetap tersimpan di riwayat. Tugas perbaikan yang terbuka ikut ditutup."
+          onClose={() => setModal(null)} onSubmit={t => { const r = actions.cancelDraft(f.id, t); if (r.ok) toast('FPK dibatalkan'); return r; }} />
       )}
     </div>
   );

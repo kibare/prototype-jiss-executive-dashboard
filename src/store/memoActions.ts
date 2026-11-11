@@ -7,6 +7,7 @@ import { settingNum } from '../domain/settings';
 import { resolveAssignee } from '../domain/tasks';
 import { has, isDeputy } from '../domain/rbac';
 import { MEMO_TYPE } from '../domain/labels';
+import { deputyBlocked, DEPUTY_WAIT } from './fpkActions';
 
 const num = (tx: Tx, key: string, fb: number) => settingNum(tx.s.settings, key, fb);
 const wd = (tx: Tx, n: number) => addWorkdays(TODAY, n, tx.s.holidays);
@@ -133,6 +134,7 @@ export function buildMemoActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (!m || m.status !== 'menunggu_bod') return fail('Memo tidak menunggu BOD.');
     const deputy = !has(tx.me, 'BOD') && isDeputy(tx.me, tx.s.delegations);
     if (!has(tx.me, 'BOD') && !deputy) return fail('Hanya BOD atau wakil.');
+    if (deputy && deputyBlocked(tx, m.id, 'setujui_memo')) return fail(DEPUTY_WAIT);
     if (m.createdBy === tx.me.id) return fail('Pembuat memo tidak bisa menyetujui memonya sendiri. Persetujuan pindah ke BOD.');
     if (decision === 'kembalikan' && !note.trim()) return fail('Alasan wajib diisi.');
     const s = spkOf(tx, m.spkId)!;
@@ -180,13 +182,16 @@ export function buildMemoActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (!m || m.status !== 'terkirim') return fail('Memo belum terkirim.');
     const s = spkOf(tx, m.spkId)!;
     if (!isOwner(tx, s)) return fail('Hanya Marketing pemegang klien.');
-    if (answer !== 'setuju' && !note.trim()) return fail('Tulis catatan jawaban klien.');
+    // Pengakhiran oleh perusahaan bukan penawaran: klien hanya menerima pemberitahuan, tidak ada setuju/nego.
+    const notice = m.type === 'pengakhiran_perusahaan';
+    if (notice && answer !== 'tidak_lanjut') return fail('Memo pengakhiran oleh perusahaan hanya dicatat sebagai sudah diterima klien.');
+    if (answer !== 'setuju' && !notice && !note.trim()) return fail('Tulis catatan jawaban klien.');
     m.status = 'dijawab';
     m.clientAnswer = answer;
     m.answerNote = note || undefined;
     m.answeredAt = TODAY;
     tx.closeTasks(t => t.refId === m.id && t.kind === 'catat_jawaban');
-    tx.audit({ entity: 'memo', entityId: m.id, action: `Jawaban klien: ${answer.replace('_', ' ')}`, after: note || undefined });
+    tx.audit({ entity: 'memo', entityId: m.id, action: notice ? 'Klien sudah menerima pemberitahuan pengakhiran' : `Jawaban klien: ${answer.replace('_', ' ')}`, after: note || undefined });
     if (answer === 'setuju') {
       tx.addTask({ kind: 'input_spk_perpanjangan', title: `Input SPK perpanjangan ${label(tx, s)} (FPK periode berjalan sebagai induk)`, refType: 'spk', refId: s.id, assigneeRole: 'Marketing', assigneeUserId: m.createdBy, dueAt: s.periodEnd });
       tx.notify(`Klien setuju perpanjangan ${label(tx, s)}.`, stakeholders(tx, s), { refType: 'memo', refId: m.id });
@@ -202,7 +207,7 @@ export function buildMemoActions(exec: (fn: (tx: Tx) => Result) => Result) {
       tx.audit({ entity: 'memo', entityId: nm.id, action: `Memo baru dari nego atas ${m.number}` });
     } else {
       notContinuing(tx, m, s);
-      tx.notify(`Klien tidak melanjutkan ${label(tx, s)} setelah ${fmtDate(s.periodEnd)}.`, stakeholders(tx, s), { refType: 'memo', refId: m.id });
+      tx.notify(notice ? `Pengakhiran ${label(tx, s)} sudah diterima klien. Kontrak berakhir ${fmtDate(s.periodEnd)}.` : `Klien tidak melanjutkan ${label(tx, s)} setelah ${fmtDate(s.periodEnd)}.`, stakeholders(tx, s), { refType: 'memo', refId: m.id });
     }
     return ok();
   });

@@ -6,7 +6,7 @@ import { AlertTriangle, ArrowRight, Clock, CornerDownRight, UserCheck } from 'lu
 import { useStore } from '../../store/store';
 import { Badge, Btn, Card, Empty, PageHeader, Tabs, cx } from '../../ui/kit';
 import { fmtDate, diffDays, TODAY } from '../../domain/time';
-import { TASK_KIND_LABEL, type TaskReason, type Escalation } from '../../domain/tasks';
+import { TASK_KIND_LABEL, escalationHeadRole, type TaskReason, type Escalation } from '../../domain/tasks';
 import type { Task } from '../../domain/types';
 import { navigate } from '../../router';
 
@@ -34,6 +34,7 @@ const ACTION_LABEL: Partial<Record<Task['kind'], string>> = {
   setujui_memo: 'Putuskan',
   cek_margin_memo: 'Cek margin',
   input_spk_perpanjangan: 'Input SPK perpanjangan',
+  spk_berakhir_jaga: 'Input SPK perpanjangan',
   penyesuaian_fpk: 'Buka FPK',
   cari_pengganti: 'Buka',
   demobilisasi: 'Buka',
@@ -109,12 +110,12 @@ export const TaskCard: React.FC<{ task: Task; reason: TaskReason; esc: Escalatio
   const { lookups, me } = useStore();
   const [modal, setModal] = useState<'done' | 'move' | null>(null);
   const daysLeft = diffDays(TODAY, task.dueAt);
-  const canMove = task.assigneeRole !== 'BOD' && (reason === 'eskalasi-kepala' || reason === 'eskalasi-bod' || me.headOf.includes(task.assigneeRole) || me.roles.includes('BOD'));
+  const canMove = task.assigneeRole !== 'BOD' && (reason === 'eskalasi-kepala' || reason === 'eskalasi-bod' || me.headOf.includes(escalationHeadRole(task.assigneeRole)) || me.roles.includes('BOD'));
   const owner = task.assigneeUserId ? lookups.user.get(task.assigneeUserId)?.name : `semua ${task.assigneeRole}`;
   const target = task.kind === 'kejar_spk' ? `/spk/input?fpk=${task.refId}`
     : task.kind === 'urus_spk_salah' ? `/spk/${task.refId}/revisi`
     : task.kind === 'memo' && task.refType === 'spk' ? `/memo/baru?spk=${task.refId}`
-    : task.kind === 'input_spk_perpanjangan' ? `/spk/input?induk=${task.refId}`
+    : task.kind === 'input_spk_perpanjangan' || task.kind === 'spk_berakhir_jaga' ? `/spk/input?induk=${task.refId}`
     : refLink(task);
   return (
     <div className={cx('bg-white border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3', esc.overdue ? 'border-rose-300' : 'border-slate-200')}>

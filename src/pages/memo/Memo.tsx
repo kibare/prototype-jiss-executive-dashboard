@@ -10,6 +10,7 @@ import { effectiveSpks } from '../../domain/selectors';
 import { TODAY, diffDays, fmtDate, hMinus, fmtDateTime } from '../../domain/time';
 import { settingNum } from '../../domain/settings';
 import { has, isDeputy } from '../../domain/rbac';
+import { deputyMayAct } from '../../domain/tasks';
 import type { Memo, MemoType } from '../../domain/types';
 
 const FilePick: React.FC<{ label: string; value: string; onChange: (v: string) => void }> = ({ label, value, onChange }) => (
@@ -212,6 +213,10 @@ const ActionCard: React.FC<{ m: Memo }> = ({ m }) => {
   if (m.status === 'menunggu_bod' && bodLike) {
     if (m.createdBy === me.id) return <Card title="Persetujuan BOD"><p className="text-sm text-rose-700">Anda pembuat memo ini, jadi tidak bisa menyetujuinya. Persetujuan pindah ke BOD.</p></Card>;
     const low = v.marginPct !== undefined && v.marginPct < min;
+    const bodTask = state.tasks.find(t => t.refId === m.id && t.kind === 'setujui_memo' && t.status === 'terbuka');
+    if (!has(me, 'BOD') && !deputyMayAct(me, state.delegations, bodTask)) {
+      return <Card title="Persetujuan BOD"><p className="text-sm text-slate-600">Menunggu BOD. Sebagai wakil, Anda baru bisa memutuskan setelah tugas BOD lewat batas{bodTask ? ` (${fmtDate(bodTask.dueAt)})` : ''}, atau saat delegasi periode aktif.</p></Card>;
+    }
     return (
       <Card title={has(me, 'BOD') ? 'Persetujuan BOD' : 'Persetujuan BOD (sebagai wakil, atas nama BOD)'}>
         {low && <div className="flex items-center gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2 mb-3"><TrendingDown className="w-4 h-4" />Margin {v.marginPct?.toLocaleString('id-ID')}% di bawah minimum {min}%.</div>}
@@ -236,6 +241,15 @@ const ActionCard: React.FC<{ m: Memo }> = ({ m }) => {
         </div>
         <div className="mt-3"><ErrorText>{err}</ErrorText></div>
         <div className="flex justify-end mt-3"><Btn icon={<Send className="w-4 h-4" />} onClick={() => run(actions.sendMemo(m.id, signed, proof, sent), 'Memo ditandai terkirim')}>Tandai terkirim</Btn></div>
+      </Card>
+    );
+  }
+  if (m.status === 'terkirim' && owner && m.type === 'pengakhiran_perusahaan') {
+    return (
+      <Card title="Konfirmasi pemberitahuan pengakhiran">
+        <p className="text-sm text-slate-600 mb-3">Memo pengakhiran oleh perusahaan bersifat pemberitahuan, jadi tidak ada setuju atau nego. Tandai bila klien sudah menerima memo.</p>
+        <Btn variant="danger" icon={<CheckCircle2 className="w-4 h-4" />} onClick={() => setModal('tidak_lanjut')}>Klien sudah menerima pemberitahuan</Btn>
+        {modal === 'tidak_lanjut' && <ReasonModal title="Klien sudah menerima pemberitahuan" label="Catatan" confirm="Simpan" variant="danger" required={false} hint="Tugas demobilisasi dibuat untuk Operasional (tarik personel) dan HR (akhiri penempatan); Finance diberi info untuk invoice terakhir." onClose={() => setModal(null)} onSubmit={t => { const r = actions.recordAnswer(m.id, 'tidak_lanjut', t); if (r.ok) toast('Tugas demobilisasi dibuat'); return r; }} />}
       </Card>
     );
   }

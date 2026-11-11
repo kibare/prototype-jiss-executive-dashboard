@@ -5,7 +5,7 @@ Tujuannya untuk validasi alur ke user dan contoh layar untuk tim dev. **Kalau pr
 
 - Semua data di prototipe ini **fiktif** (nama orang, klien, site, nomor dokumen, nilai uang).
 - Tidak ada backend: data disimpan di memori browser dan kembali ke awal saat halaman dimuat ulang (atau lewat menu user → *Reset data contoh*).
-- Tanggal simulasi: **12 Nov 2026** (`src/domain/time.ts`).
+- Tanggal simulasi: **12 Nov 2026** (`src/domain/time.ts`). Klik chip tanggal di kiri atas untuk menjalankan job harian atau memajukan tanggal 1/7/30 hari (SPK berakhir, tugas memo H-75, pengingat kejar SPK hari ke-7/14/21, eskalasi). "Reset data contoh" mengembalikan tanggal ke 12 Nov 2026.
 
 ## Menjalankan
 

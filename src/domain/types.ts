@@ -193,6 +193,17 @@ export interface FpkReview {
   at: string;
 }
 
+export interface MutationState {
+  fromAreaId: string;
+  fromSiteId?: string;
+  qty: number;
+  releasedIds: string[];
+  effectiveDate: string;
+  placed: boolean;
+  cancelled?: boolean;
+  restored?: boolean;
+}
+
 export interface Fpk {
   id: string;
   number: string;
@@ -210,7 +221,8 @@ export interface Fpk {
   /** Status serah personel per FPK (People in Act). */
   handedToHr?: boolean;
   registered?: boolean;
-  mutation?: { releasedIds: string[]; effectiveDate: string; placed: boolean; cancelled?: boolean };
+  /** Mutasi per sumber (kunci = id baris FPK + urutan sumber). */
+  mutations?: Record<string, MutationState>;
   notFeasible?: { by: string; division: Division; reason: string };
   returned?: { by: string; reason: string; at: string; fromDivision?: Division | 'BOD' };
   bodDecision?: { decision: 'setujui' | 'kembalikan' | 'tolak'; by: string; onBehalfOf?: string; note?: string; at: string };
@@ -257,6 +269,8 @@ export interface Spk {
   revisionReason?: string;
   invoiceHeld?: boolean;
   isInitialData?: boolean;
+  /** SPK sudah berakhir tapi site masih dijaga tanpa SPK pengganti: masuk daftar jalan tanpa SPK sejak tanggal ini. */
+  lapsedFrom?: string;
 }
 
 // ---------- Memo ----------
@@ -354,6 +368,7 @@ export type TaskKind =
   | 'input_spk_perpanjangan'
   | 'info_invoice_akhir'
   | 'cari_pengganti'
+  | 'spk_berakhir_jaga'
   | 'demobilisasi';
 
 export type RefType = 'fpk' | 'spk' | 'memo' | 'site' | 'personnel' | 'client';
@@ -375,6 +390,10 @@ export interface Task {
   doneAt?: string;
   /** Untuk pengingat kejar SPK: tidak pakai eskalasi standar. */
   customEscalation?: string;
+  /** Pembeda bila satu dokumen punya beberapa tugas sejenis (mis. mutasi per sumber). */
+  subKey?: string;
+  /** Pengingat yang sudah dikirim (hari ke-n), untuk tugas kejar SPK. */
+  remindersSent?: number[];
 }
 
 export interface Notification {

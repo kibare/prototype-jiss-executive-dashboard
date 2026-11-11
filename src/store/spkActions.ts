@@ -29,11 +29,16 @@ const num = (tx: Tx, key: string, fb: number) => settingNum(tx.s.settings, key, 
 const refreshFpk = (tx: Tx, f: Fpk) => {
   if (!['berjalan', 'tertutup_sebagian', 'disetujui'].includes(f.status)) return;
   const cov = fpkCoverage(f, tx.s.spks);
+  if (f.status === 'disetujui') {
+    // Belum mulai jaga: status FPK tetap "disetujui" supaya PIC area masih bisa konfirmasi mulai jaga.
+    tx.audit({ entity: 'fpk', entityId: f.id, action: 'SPK aktif sebelum mulai jaga', after: `${cov.done}/${cov.total} orang tertutup SPK` });
+    return;
+  }
   const before = f.status;
   if (cov.done >= cov.total && cov.total > 0) {
     f.status = 'selesai';
     tx.closeTasks(t => t.refId === f.id && t.kind === 'kejar_spk');
-  } else if (cov.done > 0 && f.status !== 'disetujui') f.status = 'tertutup_sebagian';
+  } else if (cov.done > 0) f.status = 'tertutup_sebagian';
   if (before !== f.status) tx.audit({ entity: 'fpk', entityId: f.id, action: `Status FPK: ${before.replace('_', ' ')} → ${f.status.replace('_', ' ')} (otomatis dari SPK aktif)`, after: `${cov.done}/${cov.total} orang tertutup SPK` });
 };
 
@@ -46,8 +51,11 @@ const financeVerifier = (tx: Tx, s: Spk) => {
 export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
   const inputSpk = (input: SpkInput, reviseId?: string) => exec(tx => {
     if (!has(tx.me, 'Marketing')) return fail('Hanya Marketing yang menginput SPK.');
-    const f = input.fpkId ? tx.s.fpks.find(x => x.id === input.fpkId) : undefined;
     const parent = input.parentSpkId ? tx.s.spks.find(x => x.id === input.parentSpkId) : undefined;
+    // Perpanjangan mengikuti FPK SPK induknya (bila ada); isi dibandingkan dengan SPK induk dan memo yang disetujui klien.
+    const renewal = input.type === 'perpanjangan' && !!parent;
+    const fpkId = renewal ? parent!.fpkId : input.fpkId;
+    const f = fpkId ? tx.s.fpks.find(x => x.id === fpkId) : undefined;
     // Perpanjangan SPK data awal tidak punya FPK induk: klien diambil dari SPK induk.
     if (!f && !(input.type === 'perpanjangan' && parent)) return fail('Pilih FPK induk (atau SPK induk untuk perpanjangan SPK data awal).');
     const clientId = f ? latest(f).clientId : parent!.clientId;
@@ -60,14 +68,18 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (input.type === 'perpanjangan' && !input.parentSpkId) return fail('Perpanjangan wajib memilih SPK induk.');
     if (!(input.monthlyValue > 0)) return fail('Nilai per bulan wajib diisi.');
     if (!input.lines.length || input.lines.some(l => !l.positionId || !(l.qty > 0))) return fail('Isi baris jabatan dengan jumlah lebih dari 0.');
-    if (f && input.lines.some(l => !l.fpkLineId)) return fail('Setiap baris SPK harus menunjuk baris FPK yang ditutup.');
+    if (f && !renewal && input.lines.some(l => !l.fpkLineId)) return fail('Setiap baris SPK harus menunjuk baris FPK yang ditutup.');
+    if (renewal && parent!.status !== 'aktif' && parent!.status !== 'berakhir') return fail('SPK induk perpanjangan harus aktif atau sudah berakhir.');
+    const lines = renewal
+      ? input.lines.map(l => ({ ...l, fpkLineId: parent!.lines.find(x => x.positionId === l.positionId && x.shift === l.shift)?.fpkLineId }))
+      : input.lines;
     if (!input.pdfName) return fail('Lampirkan PDF SPK.');
     if (tx.s.spks.some(x => x.id !== reviseId && x.clientId === clientId && x.number.trim().toLowerCase() === input.number.trim().toLowerCase())) return fail('Nomor SPK sudah dipakai untuk klien ini.');
 
     const base = {
       number: input.number.trim(), type: input.type, parentSpkId: input.parentSpkId, fpkId: f?.id, clientId, companyId: input.companyId,
       siteId: input.siteId, periodStart: input.periodStart, periodEnd: input.periodEnd, effectiveDate: input.effectiveDate, monthlyValue: input.monthlyValue,
-      lines: input.lines.map(l => ({ id: tx.id('sl'), ...l })),
+      lines: lines.map(l => ({ id: tx.id('sl'), ...l })),
       pdf: { id: tx.id('at'), kind: 'PDF SPK' as const, fileName: input.pdfName, priced: true, uploadedBy: tx.me.id, uploadedAt: NOW },
       status: 'diinput' as const, inputBy: tx.me.id, inputAt: TODAY,
     };
@@ -84,7 +96,7 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
       tx.s.spks.unshift(s);
       tx.audit({ entity: 'spk', entityId: s.id, action: 'SPK diinput', after: s.number });
     }
-    if (input.type === 'perpanjangan' && input.parentSpkId) tx.closeTasks(t => t.refId === input.parentSpkId && t.kind === 'input_spk_perpanjangan');
+    if (input.type === 'perpanjangan' && input.parentSpkId) tx.closeTasks(t => t.refId === input.parentSpkId && (t.kind === 'input_spk_perpanjangan' || t.kind === 'spk_berakhir_jaga'));
     tx.addTask({
       kind: 'verifikasi_spk', title: `Verifikasi ${s.number} — ${tx.s.clients.find(c => c.id === s.clientId)?.name}`, refType: 'spk', refId: s.id,
       assigneeRole: 'Finance', assigneeUserId: financeVerifier(tx, s), division: 'Finance',
@@ -128,16 +140,23 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (s.type === 'perpanjangan' && s.parentSpkId) {
       const old = tx.s.spks.find(x => x.id === s.parentSpkId);
       if (old && diffDays(old.periodEnd, TODAY) > 0) old.status = 'berakhir';
+      if (old?.lapsedFrom) {
+        // Jeda antara SPK lama berakhir dan perpanjangan aktif: hari di luar periode SPK baru tidak tertagih.
+        const gap = Math.max(0, diffDays(old.lapsedFrom, s.periodStart));
+        tx.audit({ entity: 'spk', entityId: old.id, action: 'Keluar dari daftar jalan tanpa SPK (perpanjangan aktif)', after: gap ? `${gap} hari sebelum periode ${s.number} dicatat tidak tertagih` : undefined });
+        old.lapsedFrom = undefined;
+        tx.closeTasks(t => t.refId === old.id && t.kind === 'spk_berakhir_jaga');
+      }
     }
     let kpi = '';
-    if (f?.startedAt) {
+    if (f?.startedAt && s.type !== 'perpanjangan') {
       const waited = diffDays(f.startedAt, TODAY);
       const unbilled = Math.max(0, diffDays(f.startedAt, s.periodStart));
       kpi = `Menunggu SPK ${waited} hari sejak mulai jaga${unbilled ? `; ${unbilled} hari sebelum periode SPK dicatat tidak tertagih` : '; seluruh hari tercakup periode SPK'}`;
     }
     tx.audit({ entity: 'spk', entityId: s.id, action: `Verifikasi SPK: ${verdict} → aktif`, after: [reason, kpi].filter(Boolean).join('. ') || undefined });
 
-    if (verdict === 'benar' && f) {
+    if (verdict === 'benar' && f && s.type !== 'perpanjangan') {
       // SPK jadi acuan: buat FPK perubahan dari isi SPK sebagai tugas penyesuaian.
       const v = latest(f);
       const nf: Fpk = {

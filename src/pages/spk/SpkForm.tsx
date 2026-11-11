@@ -36,11 +36,14 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
   if (reviseId && (!old || old.status !== 'perlu_revisi' || !myClient(old.clientId))) return <NotFound what="SPK yang perlu revisi" />;
   const f = lookups.fpk.get(fpkId);
   const parentSpk = lookups.spk.get(parentSpkId);
-  const noFpkRenewal = type === 'perpanjangan' && !!parentSpk && !parentSpk.fpkId;
+  // Perpanjangan: FPK dan klien mengikuti SPK induk, baris dibandingkan dengan SPK induk.
+  const noFpkRenewal = type === 'perpanjangan' && !!parentSpk;
   const clientId = f ? latest(f).clientId : noFpkRenewal ? parentSpk!.clientId : '';
-  const cov = f ? fpkCoverage(f, state.spks) : null;
+  // Addendum menggantikan SPK induknya, jadi sisa kuota dihitung tanpa SPK induk.
+  const cov = f ? fpkCoverage(f, type === 'addendum' && parentSpkId ? state.spks.filter(x => x.id !== parentSpkId) : state.spks, reviseId) : null;
   const sites = state.sites.filter(s => s.clientId === clientId);
-  const parents = state.spks.filter(s => s.status === 'aktif' && (clientId ? s.clientId === clientId : myClient(s.clientId)));
+  // Perpanjangan boleh untuk SPK yang sudah berakhir (mis. site masih dijaga setelah SPK habis).
+  const parents = state.spks.filter(s => (s.status === 'aktif' || (type === 'perpanjangan' && s.status === 'berakhir')) && (clientId ? s.clientId === clientId : myClient(s.clientId)));
 
   const submit = () => {
     const r = actions.inputSpk({ number, type, parentSpkId: parentSpkId || undefined, fpkId: noFpkRenewal ? undefined : fpkId, companyId, siteId, periodStart, periodEnd, effectiveDate: effectiveDate || undefined, monthlyValue, lines, pdfName: pdf }, reviseId);
@@ -62,7 +65,7 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
           <div className="grid sm:grid-cols-2 gap-3">
             <Field label="FPK induk" required>
               <Select value={noFpkRenewal ? '' : fpkId} onChange={e => { setFpkId(e.target.value); setSiteId(''); setLines(lines.map(l => ({ ...l, fpkLineId: undefined }))); }} disabled={!!reviseId || noFpkRenewal}>
-                <option value="">{noFpkRenewal ? 'Tidak ada (SPK induk data awal)' : '– pilih FPK klien yang Anda pegang –'}</option>
+                <option value="">{noFpkRenewal ? (parentSpk!.fpkId ? `Mengikuti SPK induk (${lookups.fpk.get(parentSpk!.fpkId)?.number})` : 'Tidak ada (SPK induk data awal)') : '– pilih FPK klien yang Anda pegang –'}</option>
                 {fpks.map(x => <option key={x.id} value={x.id}>{x.number} · {lookups.client.get(latest(x).clientId)?.name} · {lookups.site.get(latest(x).siteId)?.name}</option>)}
               </Select>
             </Field>
@@ -127,7 +130,7 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
                   {SHIFTS.map(s => <option key={s}>{s}</option>)}
                 </Select>
                 <Select className="col-span-12 sm:col-span-4 order-last sm:order-none" value={l.fpkLineId ?? ''} onChange={e => setLines(lines.map((x, j) => j === i ? { ...x, fpkLineId: e.target.value || undefined } : x))} disabled={!cov || noFpkRenewal}>
-                  <option value="">{noFpkRenewal ? 'tanpa FPK induk' : '– baris FPK yang ditutup –'}</option>
+                  <option value="">{noFpkRenewal ? 'dibandingkan dengan SPK induk' : '– baris FPK yang ditutup –'}</option>
                   {cov?.lines.map(c => (
                     <option key={c.line.id} value={c.line.id}>
                       {lookups.position.get(c.line.positionId)?.name} · {c.line.shift} · sisa {c.line.qty - c.covered} dari {c.line.qty}

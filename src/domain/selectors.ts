@@ -40,11 +40,25 @@ export const activeByPosition = (personnel: Personnel[], areaId: string, siteId?
   return m;
 };
 
-/** Jumlah orang per baris FPK yang sudah tertutup SPK aktif. */
-export const fpkCoverage = (f: Fpk, spks: Spk[]) => {
+/** SPK aktif milik FPK yang dihitung ke kuota: addendum yang sudah berlaku menggantikan SPK induknya (tidak dihitung dobel). */
+export const countingSpks = (fpkId: string, spks: Spk[], today = TODAY, excludeId?: string) => {
+  const active = spks.filter(s => s.fpkId === fpkId && s.status === 'aktif' && s.id !== excludeId);
+  const superseded = new Set(active.filter(s => s.type === 'addendum' && s.parentSpkId && diffDays(s.effectiveDate ?? s.periodStart, today) >= 0).map(s => s.parentSpkId!));
+  return active.filter(s => !superseded.has(s.id));
+};
+
+/** Isi kontrak yang berlaku pada tanggal tertentu: addendum terakhir yang sudah berlaku, atau SPK induk. */
+export const effectiveContractOn = (root: Spk, spks: Spk[], date: string) => {
+  const adds = spks
+    .filter(s => s.type === 'addendum' && s.parentSpkId === root.id && s.status === 'aktif' && diffDays(s.effectiveDate ?? s.periodStart, date) >= 0)
+    .sort((a, b) => (a.effectiveDate ?? a.periodStart).localeCompare(b.effectiveDate ?? b.periodStart));
+  return adds.length ? adds[adds.length - 1] : root;
+};
+
+export const fpkCoverage = (f: Fpk, spks: Spk[], excludeId?: string) => {
   const v = latest(f);
   const covered = new Map<string, number>();
-  spks.filter(s => s.fpkId === f.id && s.status === 'aktif').forEach(s =>
+  countingSpks(f.id, spks, TODAY, excludeId).forEach(s =>
     s.lines.forEach(l => l.fpkLineId && covered.set(l.fpkLineId, (covered.get(l.fpkLineId) ?? 0) + l.qty)),
   );
   const lines = v.lines.map(l => ({ line: l, covered: Math.min(covered.get(l.id) ?? 0, l.qty) }));
@@ -85,3 +99,23 @@ export const withoutSpkList = (fpks: Fpk[], spks: Spk[], sites: Site[], today = 
       };
     })
     .filter(x => x.openMonthly > 0);
+
+export interface LapsedSpk {
+  spk: Spk;
+  site?: Site;
+  from: string;
+  days: number;
+  held: number;
+  pendingSpk?: Spk;
+}
+
+/** SPK yang sudah berakhir tapi site masih dijaga tanpa SPK pengganti (ditandai job harian). */
+export const lapsedSpkList = (spks: Spk[], sites: Site[], today = TODAY): LapsedSpk[] =>
+  spks.filter(s => s.lapsedFrom && diffDays(s.lapsedFrom, today) >= 0).map(s => ({
+    spk: s,
+    site: sites.find(x => x.id === s.siteId),
+    from: s.lapsedFrom!,
+    days: diffDays(s.lapsedFrom!, today) + 1,
+    held: heldValue(s.monthlyValue, s.lapsedFrom!, today),
+    pendingSpk: spks.find(x => x.parentSpkId === s.id && x.type === 'perpanjangan' && (x.status === 'diinput' || x.status === 'perlu_revisi')),
+  }));

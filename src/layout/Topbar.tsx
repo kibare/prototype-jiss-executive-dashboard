@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Bell, ChevronDown, Menu, CalendarDays, RotateCcw } from 'lucide-react';
+import { Bell, ChevronDown, Menu, CalendarDays, RotateCcw, FastForward, Play } from 'lucide-react';
 import { useStore } from '../store/store';
 import { navigate } from '../router';
-import { cx } from '../ui/kit';
+import { cx, toast } from '../ui/kit';
 import { fmtDate, fmtDateTime, TODAY } from '../domain/time';
 import { isDeputy } from '../domain/rbac';
 
@@ -27,6 +27,9 @@ export const Topbar: React.FC<{ onMenu: () => void }> = ({ onMenu }) => {
   const bellRef = useRef<HTMLDivElement>(null);
   useOutside(userRef, () => setUserOpen(false));
   useOutside(bellRef, () => setBellOpen(false));
+  const [dateOpen, setDateOpen] = useState(false);
+  const dateRef = useRef<HTMLDivElement>(null);
+  useOutside(dateRef, () => setDateOpen(false));
   const unread = myNotifications.filter(n => !n.readBy.includes(me.id)).length;
   const deputy = isDeputy(me, state.delegations);
 
@@ -36,9 +39,26 @@ export const Topbar: React.FC<{ onMenu: () => void }> = ({ onMenu }) => {
         <button onClick={onMenu} className="p-2 -ml-2 rounded-lg text-slate-600 hover:bg-slate-100 lg:hidden" aria-label="Buka menu navigasi">
           <Menu className="w-5 h-5" />
         </button>
-        <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 bg-slate-100 rounded-md px-2 py-1">
-          <CalendarDays className="w-3.5 h-3.5" /> Tanggal simulasi: {fmtDate(TODAY)}
-        </span>
+        <div className="relative" ref={dateRef}>
+          <button onClick={() => setDateOpen(o => !o)} className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md px-2 py-1" aria-label="Kontrol tanggal simulasi">
+            <CalendarDays className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Tanggal simulasi:</span> {fmtDate(TODAY)} <ChevronDown className="w-3 h-3" />
+          </button>
+          {dateOpen && (
+            <div className="absolute left-0 mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden z-40">
+              <p className="px-4 py-2.5 text-[11px] text-slate-500 border-b border-slate-100">Simulasi job harian: SPK berakhir, tugas memo H-75, pengingat kejar SPK hari ke-7/14/21, dan eskalasi ikut tanggal ini.</p>
+              {([[0, 'Jalankan job harian untuk hari ini', Play], [1, 'Majukan 1 hari', FastForward], [7, 'Majukan 7 hari', FastForward], [30, 'Majukan 30 hari', FastForward]] as const).map(([n, text, Icon]) => (
+                <button key={n} onClick={() => {
+                  const r = actions.advanceDays(n);
+                  setDateOpen(false);
+                  const shown = r.summary.slice(0, 3).join('; ');
+                  toast(r.summary.length ? `Job harian: ${shown}${r.summary.length > 3 ? `; +${r.summary.length - 3} lainnya` : ''}` : n ? `Tanggal sekarang ${fmtDate(TODAY)}. Tidak ada kejadian baru.` : 'Job harian selesai. Tidak ada kejadian baru.');
+                }} className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 text-left">
+                  <Icon className="w-3.5 h-3.5 text-slate-500" /> {text}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

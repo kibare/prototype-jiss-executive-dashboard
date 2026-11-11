@@ -8,6 +8,7 @@ import { SOURCE_LABEL } from '../../domain/labels';
 import { settingNum } from '../../domain/settings';
 import { TODAY, diffDays, fmtDate } from '../../domain/time';
 import { has, isDeputy } from '../../domain/rbac';
+import { deputyMayAct } from '../../domain/tasks';
 import type { Division, Fpk, FpkLineSource, SourceKind } from '../../domain/types';
 
 type R = { ok: boolean; error?: string };
@@ -195,6 +196,10 @@ const BodPanel: React.FC<{ f: Fpk }> = ({ f }) => {
   if (f.createdBy === me.id) {
     return <Card title="Persetujuan BOD"><p className="text-sm text-rose-700">Anda pembuat FPK ini, jadi tidak bisa menyetujuinya. Persetujuan pindah ke BOD ({lookups.user.get('u-bod')?.name}).</p></Card>;
   }
+  const bodTask = state.tasks.find(t => t.refId === f.id && t.kind === 'setujui_fpk' && t.status === 'terbuka');
+  if (deputy && !deputyMayAct(me, state.delegations, bodTask)) {
+    return <Card title="Persetujuan BOD"><p className="text-sm text-slate-600">Menunggu BOD. Sebagai wakil, Anda baru bisa memutuskan setelah tugas BOD lewat batas{bodTask ? ` (${fmtDate(bodTask.dueAt)})` : ''}, atau saat delegasi periode aktif.</p></Card>;
+  }
   return (
     <Card title={deputy ? 'Persetujuan BOD (Anda sebagai wakil, tercatat atas nama BOD)' : 'Persetujuan BOD'}>
       <div className="space-y-2 mb-3">
@@ -229,11 +234,25 @@ const StartPanel: React.FC<{ f: Fpk }> = ({ f }) => {
   const v = latest(f);
   const notYet = diffDays(v.plannedStart, TODAY) < 0;
   const count = state.personnel.filter(p => p.placements.some(pl => pl.fpkId === f.id && !pl.end) && ['terdaftar', 'standby'].includes(p.status)).length;
+  const calon = state.personnel.filter(p => p.status === 'calon' && p.placements.some(pl => pl.fpkId === f.id && !pl.end)).length;
+  const prep = state.tasks.filter(t => t.refId === f.id && t.status === 'terbuka' && t.kind !== 'mulai_jaga');
   return (
     <Card title="Mulai jaga">
       <p className="text-sm text-slate-600">
         Konfirmasi di hari pertama personel jaga. Ini titik awal hitungan jalan tanpa SPK, dan {count} personel yang tercantum otomatis berstatus aktif.
       </p>
+      {(calon > 0 || prep.length > 0) && (
+        <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Persiapan belum lengkap. Mulai jaga tetap bisa dikonfirmasi, tapi:</p>
+            <ul className="list-disc ml-4 mt-1 space-y-0.5">
+              {calon > 0 && <li>{calon} calon belum ditandai terdaftar oleh HR, jadi belum ikut menjadi aktif.</li>}
+              {prep.map(t => <li key={t.id}>{t.title} (belum selesai)</li>)}
+            </ul>
+          </div>
+        </div>
+      )}
       {notYet && <p className="text-xs text-amber-700 mt-2">Tanggal mulai rencana {fmtDate(v.plannedStart)}. Tombol aktif pada tanggal itu.</p>}
       <div className="mt-3"><ErrorText>{err}</ErrorText></div>
       <div className="flex justify-end mt-3">

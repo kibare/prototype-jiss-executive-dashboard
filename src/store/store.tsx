@@ -4,13 +4,15 @@ import type {
   Setting, Site, SiteAssignment, Spk, Task, User, RefType,
 } from '../domain/types';
 import * as seed from '../domain/seed';
-import { NOW } from '../domain/time';
+import { NOW, SEED_TODAY, setToday } from '../domain/time';
 import { can as canPerm, canSeeArea, canSeeMoney, canOpenAttachment, isBodLike, type Perm } from '../domain/rbac';
 import { taskReason, escalationOf, type TaskCtx } from '../domain/tasks';
 import { buildFpkActions } from './fpkActions';
 import { buildSpkActions } from './spkActions';
 import { buildMemoActions } from './memoActions';
 import { buildTaskActions } from './taskActions';
+import { buildDailyActions } from './dailyJob';
+import { validateMemoOrder, validateSetting } from '../domain/settings';
 
 export interface State {
   users: User[];
@@ -32,6 +34,8 @@ export interface State {
   audit: AuditEntry[];
   currentUserId: string;
   seq: number;
+  /** Tanggal simulasi (disimpan di state supaya tampilan ikut dihitung ulang saat tanggal dimajukan). */
+  today: string;
 }
 
 const initialState = (): State => ({
@@ -54,6 +58,7 @@ const initialState = (): State => ({
   audit: seed.SEED_AUDIT,
   currentUserId: 'u-mkt1',
   seq: 100,
+  today: SEED_TODAY,
 });
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
@@ -112,6 +117,7 @@ export const makeTaskCtx = (st: State): TaskCtx => {
       : t.refType === 'spk' ? st.spks.find(x => x.id === t.refId)?.inputBy
       : t.refType === 'memo' ? st.memos.find(x => x.id === t.refId)?.createdBy : undefined),
     areaOf: t => { const sid = siteOf(t); return sid ? st.sites.find(x => x.id === sid)?.areaId : undefined; },
+    users: st.users,
   };
 };
 
@@ -177,7 +183,8 @@ const useStoreValue = () => {
       tx.s.notifications.forEach(n => { if (n.toUserIds.includes(tx.me.id) && !n.readBy.includes(tx.me.id)) n.readBy.push(tx.me.id); });
       return ok();
     }),
-    reset: () => setState(initialState()),
+    reset: () => { setToday(SEED_TODAY); const fresh = initialState(); stateRef.current = fresh; setState(fresh); },
+    ...buildDailyActions(exec),
     ...buildMasterActions(exec),
     ...buildFpkActions(exec),
     ...buildSpkActions(exec),
@@ -210,8 +217,23 @@ function buildMasterActions(exec: (fn: (tx: Tx) => Result) => Result) {
           }
         });
       }
-      if (i >= 0) tx.s.areas[i] = a; else tx.s.areas.push({ ...a, id: tx.id('a') });
-      tx.audit({ entity: 'area', entityId: a.id || 'baru', action: i >= 0 ? 'Ubah area' : 'Buat area', before: before ? `${before.code} ${before.name}${before.active ? '' : ' (nonaktif)'}` : undefined, after: `${a.code} ${a.name}${a.active ? '' : ' (nonaktif)'}` });
+      const saved = i >= 0 ? a : { ...a, id: tx.id('a') };
+      if (i >= 0) tx.s.areas[i] = saved; else tx.s.areas.push(saved);
+      // Cakupan PIC ikut data area: PIC/backup baru mendapat area ini, PIC lama yang tidak lagi memegangnya kehilangan cakupan.
+      const holders = new Set([saved.picUserId, saved.backupPicUserId].filter(Boolean) as string[]);
+      const name = (id: string) => tx.s.users.find(u => u.id === id)?.name ?? id;
+      tx.s.users.forEach(u => {
+        if (!u.roles.includes('PIC Area')) return;
+        const hadIt = u.areaIds.includes(saved.id);
+        if (holders.has(u.id) && !hadIt) {
+          u.areaIds = [...u.areaIds, saved.id];
+          tx.audit({ entity: 'pengguna', entityId: u.id, action: `Cakupan PIC: tambah ${saved.name}`, after: name(u.id) });
+        } else if (!holders.has(u.id) && hadIt && before && (before.picUserId === u.id || before.backupPicUserId === u.id)) {
+          u.areaIds = u.areaIds.filter(x => x !== saved.id);
+          tx.audit({ entity: 'pengguna', entityId: u.id, action: `Cakupan PIC: lepas ${saved.name}`, after: name(u.id) });
+        }
+      });
+      tx.audit({ entity: 'area', entityId: saved.id, action: i >= 0 ? 'Ubah area' : 'Buat area', before: before ? `${before.code} ${before.name}${before.active ? '' : ' (nonaktif)'}` : undefined, after: `${a.code} ${a.name}${a.active ? '' : ' (nonaktif)'}` });
       return ok();
     }),
 
@@ -304,9 +326,13 @@ function buildMasterActions(exec: (fn: (tx: Tx) => Result) => Result) {
     updateSetting: (key: string, value: string) => exec(tx => {
       const st = tx.s.settings.find(x => x.key === key);
       if (!st) return fail('Kunci tidak ditemukan.');
-      if (!value.trim()) return fail('Nilai tidak boleh kosong.');
-      tx.audit({ entity: 'pengaturan', entityId: key, action: 'Ubah pengaturan', before: st.value, after: value });
+      const err = validateSetting(key, value);
+      if (err) return fail(err);
+      const before = st.value;
       st.value = value.trim();
+      const orderErr = key.startsWith('memo.') ? validateMemoOrder(tx.s.settings) : null;
+      if (orderErr) return fail(orderErr);
+      tx.audit({ entity: 'pengaturan', entityId: key, action: 'Ubah pengaturan', before, after: st.value });
       return ok();
     }),
 
