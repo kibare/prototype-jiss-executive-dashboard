@@ -93,7 +93,7 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
             </Field>
             <Field label="Periode mulai" required><DateInput value={periodStart} onChange={e => setPS(e.target.value)} /></Field>
             <Field label="Periode selesai" required><DateInput value={periodEnd} onChange={e => setPE(e.target.value)} /></Field>
-            <Field label="Nilai per bulan (Rp)" required><Input type="number" value={monthlyValue || ''} onChange={e => setValue(Number(e.target.value))} /></Field>
+            <Field label="Nilai per bulan, sebelum PPN (Rp)" required hint="Sesuai SPK, belum termasuk PPN."><Input type="number" value={monthlyValue || ''} onChange={e => setValue(Number(e.target.value))} /></Field>
             <Field label="PDF SPK" required>
               {pdf ? (
                 <div className="flex items-center justify-between text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">

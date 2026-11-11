@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: Setting[] = [
   { key: 'memo.initial_data_due_workdays', value: '5', usedIn: 'Memo', description: 'Tugas memo untuk SPK data awal (hari kerja)' },
   { key: 'notif.daily_digest_time', value: '07:00 WIB', usedIn: 'Notifikasi', description: 'Jam ringkasan pagi' },
   { key: 'session.idle_timeout_hours', value: '8', usedIn: 'Login', description: 'Sesi berakhir bila tidak aktif (jam)' },
-  { key: 'doc.number_format', value: 'JENIS/TAHUN/URUT', usedIn: 'FPK, SPK, memo', description: 'Format nomor dokumen' },
+  { key: 'doc.number_format', value: 'URUT/JISS-MKT/BULAN/TAHUN', usedIn: 'Memo eksternal', description: 'Format nomor surat keluar. URUT = nomor urut 3 digit per tahun, BULAN = bulan romawi, TAHUN = 4 digit' },
   { key: 'audit.retention_years', value: '5', usedIn: 'Audit log', description: 'Masa simpan audit log (usulan)' },
 ];
 
@@ -57,7 +57,7 @@ export const validateSetting = (key: string, raw: string): string | null => {
       return m && +m[1] < 24 && +m[2] < 60 ? null : 'Format HH:MM WIB, mis. 07:00 WIB.';
     }
     case 'doc.number_format':
-      return v.includes('URUT') ? null : 'Format nomor wajib memuat URUT (nomor urut).';
+      return v.includes('URUT') && v.includes('TAHUN') ? null : 'Format nomor wajib memuat URUT dan TAHUN, mis. URUT/JISS-MKT/BULAN/TAHUN.';
     case 'margin.minimum_pct':
       return int(0, 100);
     case 'memo.start_days_before_end':

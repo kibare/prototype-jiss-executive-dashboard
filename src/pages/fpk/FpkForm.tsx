@@ -175,7 +175,7 @@ export const FpkFormPage: React.FC<{ fpkId?: string }> = ({ fpkId }) => {
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3 mt-3">
-            <Field label="Nilai per bulan (Rp)" required hint="Field terbatas: tidak terlihat oleh Operasional, Recruitment, Pengadaan, HR, PIC area.">
+            <Field label="Nilai per bulan, sebelum PPN (Rp)" required hint="Total penawaran per bulan di surat/BOQ, belum termasuk PPN. Field terbatas: tidak terlihat oleh Operasional, Recruitment, Pengadaan, HR, PIC area.">
               <Input type="number" min={0} value={monthlyValue || ''} onChange={e => setValue(Number(e.target.value))} />
             </Field>
           </div>

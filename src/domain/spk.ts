@@ -50,7 +50,7 @@ export const compareSpkFpk = (
         field: `Nilai per bulan (SPK sebagian ${spkHead}/${fpkHead} orang, cek manual ke BOQ)`,
         spk: names.rp(s.monthlyValue), fpk: `± ${names.rp(expected)}`, same: true, money: true,
       }
-      : { field: 'Nilai per bulan', spk: names.rp(s.monthlyValue), fpk: names.rp(v.monthlyValue), same: s.monthlyValue === v.monthlyValue, money: true },
+      : { field: 'Nilai per bulan (sebelum PPN)', spk: names.rp(s.monthlyValue), fpk: names.rp(v.monthlyValue), same: s.monthlyValue === v.monthlyValue, money: true },
   ];
   s.lines.forEach(l => {
     const fl = v.lines.find(x => x.id === l.fpkLineId);

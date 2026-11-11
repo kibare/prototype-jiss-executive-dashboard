@@ -182,7 +182,7 @@ const ActionCard: React.FC<{ m: Memo }> = ({ m }) => {
     return (
       <Card title={v.bodDecision?.decision === 'kembalikan' ? `Revisi draf (dikembalikan BOD: ${v.bodDecision.note})` : 'Lengkapi draf memo'}>
         <div className="grid sm:grid-cols-2 gap-3">
-          {extend && <Field label="Nilai per bulan periode baru (Rp)" required hint={ump ? undefined : 'Perpanjangan harga sama: nilai mengikuti SPK berjalan.'}>
+          {extend && <Field label="Nilai per bulan periode baru, sebelum PPN (Rp)" required hint={ump ? undefined : 'Perpanjangan harga sama: nilai mengikuti SPK berjalan.'}>
             <Input type="number" value={value || ''} disabled={!ump} onChange={e => setValue(Number(e.target.value))} />
           </Field>}
           {ump && <FilePick label="BOQ baru" value={boq} onChange={setBoq} />}
@@ -201,7 +201,7 @@ const ActionCard: React.FC<{ m: Memo }> = ({ m }) => {
       <Card title="Cek margin memo">
         {v.boq && <div className="mb-3"><AttachmentChip a={v.boq} clientId={s.clientId} entity="memo" entityId={m.id} /></div>}
         <div className="grid sm:grid-cols-3 gap-3">
-          <Field label="Nilai baru/bulan"><div className="py-2 font-semibold"><Money value={v.newValue} clientId={s.clientId} /></div></Field>
+          <Field label="Nilai baru/bulan (sebelum PPN)"><div className="py-2 font-semibold"><Money value={v.newValue} clientId={s.clientId} /></div></Field>
           <Field label="Estimasi biaya/bulan (Rp)" required><Input type="number" value={cost || ''} onChange={e => setCost(Number(e.target.value))} /></Field>
           <Field label="Margin"><div className={cx('py-2 font-bold', margin !== null && margin < min && 'text-rose-600')}>{margin === null ? '–' : `${margin.toLocaleString('id-ID')}%`}</div></Field>
         </div>

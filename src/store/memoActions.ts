@@ -7,6 +7,7 @@ import { settingNum } from '../domain/settings';
 import { resolveAssignee } from '../domain/tasks';
 import { has, isDeputy } from '../domain/rbac';
 import { MEMO_TYPE } from '../domain/labels';
+import { DEFAULT_DOC_FORMAT, nextDocNumber } from '../domain/docNumber';
 import { deputyBlocked, DEPUTY_WAIT } from './fpkActions';
 
 const num = (tx: Tx, key: string, fb: number) => settingNum(tx.s.settings, key, fb);
@@ -24,11 +25,8 @@ const dueBefore = (tx: Tx, s: Spk, daysBefore: number) => {
 const headOf = (tx: Tx, role: 'Operasional' | 'HR' | 'Finance' | 'Marketing') => tx.s.users.find(u => u.active && u.headOf.includes(role))?.id;
 const opsForArea = (tx: Tx, areaId: string) => tx.s.users.find(u => u.active && u.roles.includes('Operasional') && u.areaIds.includes(areaId))?.id ?? headOf(tx, 'Operasional');
 
-const nextMemoNumber = (tx: Tx) => {
-  const y = TODAY.slice(0, 4);
-  const max = tx.s.memos.map(m => m.number).filter((n): n is string => !!n && n.startsWith(`MEMO/${y}/`)).map(n => parseInt(n.split('/')[2], 10)).reduce((a, b) => Math.max(a, b), 0);
-  return `MEMO/${y}/${String(max + 1).padStart(4, '0')}`;
-};
+const nextMemoNumber = (tx: Tx) =>
+  nextDocNumber(tx.s.settings.find(s => s.key === 'doc.number_format')?.value ?? DEFAULT_DOC_FORMAT, tx.s.memos.map(m => m.number), TODAY);
 
 const label = (tx: Tx, s: Spk) => `${s.number} — ${clientOf(tx, s)?.name}`;
 

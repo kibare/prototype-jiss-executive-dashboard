@@ -398,14 +398,14 @@ export const SEED_SPKS: Spk[] = [
 
 export const SEED_MEMOS: Memo[] = [
   {
-    id: 'm-1', spkId: 'sp-8', type: 'perpanjangan_ump', number: 'MEMO/2026/0021', status: 'terkirim', sentAt: '2026-10-28', createdBy: 'u-wakil', createdAt: '2026-10-18',
+    id: 'm-1', spkId: 'sp-8', type: 'perpanjangan_ump', number: '018/JISS-MKT/X/2026', status: 'terkirim', sentAt: '2026-10-28', createdBy: 'u-wakil', createdAt: '2026-10-18',
     versions: [{
       no: 1, newValue: 58_500_000, periodStart: '2027-01-01', periodEnd: '2027-12-31', estCost: 50_800_000, marginPct: 13.2, createdBy: 'u-wakil', createdAt: '2026-10-18',
       boq: att('at-m1b', 'BOQ', 'BOQ_GDN_HQ_2027.pdf', 'u-wakil', '2026-10-18'),
       bodDecision: { decision: 'setujui', by: 'u-bod', at: '2026-10-22 10:00' },
     }],
-    draftPdf: att('at-m1d', 'PDF memo', 'MEMO_2026_0021_draf.pdf', 'u-bod', '2026-10-22'),
-    signedPdf: att('at-m1s', 'PDF memo', 'MEMO_2026_0021_ttd.pdf', 'u-wakil', '2026-10-27'),
+    draftPdf: att('at-m1d', 'PDF memo', '018_JISS-MKT_X_2026_draf.pdf', 'u-bod', '2026-10-22'),
+    signedPdf: att('at-m1s', 'PDF memo', '018_JISS-MKT_X_2026_ttd.pdf', 'u-wakil', '2026-10-27'),
     proof: att('at-m1p', 'Bukti kirim', 'Tanda_terima_GDN.jpg', 'u-wakil', '2026-10-28'),
   },
 ];
@@ -478,7 +478,7 @@ export const SEED_TASKS: Task[] = [
   { id: 't-5', kind: 'perbaiki_fpk', title: 'Perbaiki FPK/2026/0011 yang dikembalikan — PT Tirta Hijau Lestari', refType: 'fpk', refId: 'f-0011', assigneeRole: 'Marketing', assigneeUserId: 'u-mkt1', createdAt: '2026-11-10', dueAt: '2026-11-12', status: 'terbuka' },
   { id: 't-6', kind: 'serah_hr', title: 'Serahkan 4 calon personel ke HR — FPK/2026/0009', refType: 'fpk', refId: 'f-0009', assigneeRole: 'Recruitment', assigneeUserId: 'u-rec', createdAt: '2026-11-02', dueAt: '2026-11-13', status: 'terbuka' },
   { id: 't-7', kind: 'lepas_mutasi', title: 'Lepas 2 personel dari Klaster Cendana untuk mutasi — FPK/2026/0009', refType: 'fpk', refId: 'f-0009', subKey: 'fl-9a:1', assigneeRole: 'Operasional', assigneeUserId: 'u-ops2', division: 'Operasional', createdAt: '2026-11-02', dueAt: '2026-11-13', status: 'terbuka' },
-  { id: 't-15', kind: 'catat_jawaban', title: 'Catat jawaban klien untuk MEMO/2026/0021 — PT Graha Data Nusantara', refType: 'memo', refId: 'm-1', assigneeRole: 'Marketing', assigneeUserId: 'u-wakil', createdAt: '2026-10-28', dueAt: '2026-12-01', status: 'terbuka', customEscalation: 'BOD di H-30 bila belum dijawab' },
+  { id: 't-15', kind: 'catat_jawaban', title: 'Catat jawaban klien untuk 018/JISS-MKT/X/2026 — PT Graha Data Nusantara', refType: 'memo', refId: 'm-1', assigneeRole: 'Marketing', assigneeUserId: 'u-wakil', createdAt: '2026-10-28', dueAt: '2026-12-01', status: 'terbuka', customEscalation: 'BOD di H-30 bila belum dijawab' },
   { id: 't-14', kind: 'ubah_penempatan', title: 'Tempatkan 1 personel standby — FPK/2026/0009', refType: 'fpk', refId: 'f-0009', assigneeRole: 'HR', assigneeUserId: 'u-hr', createdAt: '2026-11-02', dueAt: '2026-11-13', status: 'terbuka' },
   { id: 't-8', kind: 'mulai_jaga', title: 'Konfirmasi mulai jaga di Apartemen Kebayoran — FPK/2026/0009', refType: 'fpk', refId: 'f-0009', assigneeRole: 'PIC Area', assigneeUserId: 'u-pic2', createdAt: '2026-11-02', dueAt: '2026-11-16', status: 'terbuka' },
   { id: 't-13', kind: 'mulai_jaga', title: 'Konfirmasi mulai jaga di Gudang Pulogadung — FPK/2026/0007', refType: 'fpk', refId: 'f-0007', assigneeRole: 'PIC Area', assigneeUserId: 'u-pic2', createdAt: '2026-11-05', dueAt: '2026-11-12', status: 'terbuka' },

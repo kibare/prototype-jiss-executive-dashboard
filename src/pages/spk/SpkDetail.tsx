@@ -158,7 +158,7 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               ['Ditagihkan ke', <span>{client?.name}{client?.npwp ? <span className="text-slate-500"> · NPWP {client.npwp}</span> : null}</span>],
               ['Periode', `${fmtDate(s.periodStart)} – ${fmtDate(s.periodEnd)}`],
               ...(s.effectiveDate ? [['Berlaku addendum', fmtDate(s.effectiveDate)] as [string, string]] : []),
-              ['Nilai per bulan', <Money value={s.monthlyValue} clientId={s.clientId} className="font-semibold" />],
+              ['Nilai per bulan (sebelum PPN)', <Money value={s.monthlyValue} clientId={s.clientId} className="font-semibold" />],
               ['FPK induk', f ? <DocLink to={`/fpk/${f.id}`} className="text-indigo-700 hover:underline">{f.number}</DocLink> : 'Tanpa FPK (data awal)'],
               ...(parent ? [['SPK induk', <DocLink to={`/spk/${parent.id}`} className="text-indigo-700 hover:underline">{parent.number}</DocLink>] as [string, React.ReactNode]] : []),
               ['Diverifikasi', s.verifiedBy ? `${lookups.user.get(s.verifiedBy)?.name}, ${fmtDate(s.verifiedAt)} (${s.verdict})` : 'Belum'],

@@ -132,7 +132,7 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               ['Periode', `${fmtDate(v.periodStart)} – ${fmtDate(v.periodEnd)}`],
               ['Tanggal mulai rencana', fmtDate(v.plannedStart)],
               ['Mulai jaga', f.startedAt ? fmtDate(f.startedAt) : '–'],
-              ['Nilai per bulan', <Money value={v.monthlyValue} clientId={v.clientId} className="font-semibold" />],
+              ['Nilai per bulan (sebelum PPN)', <Money value={v.monthlyValue} clientId={v.clientId} className="font-semibold" />],
               ['Estimasi biaya / margin', v.estCost === undefined ? 'Belum dicek Finance' : access.money(v.clientId)
                 ? <span className={cx(lowMargin && 'text-rose-600 font-semibold')}><Money value={v.estCost} clientId={v.clientId} /> · {v.estMarginPct?.toLocaleString('id-ID')}%{lowMargin && <TrendingDown className="inline w-4 h-4 ml-1" />}</span>
                 : <Money value={0} clientId={v.clientId} />],
