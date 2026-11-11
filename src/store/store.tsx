@@ -6,7 +6,7 @@ import type {
 import * as seed from '../domain/seed';
 import { NOW, SEED_TODAY, setToday } from '../domain/time';
 import { can as canPerm, canSeeArea, canSeeMoney, canOpenAttachment, isBodLike, type Perm } from '../domain/rbac';
-import { taskReason, escalationOf, type TaskCtx } from '../domain/tasks';
+import { taskReason, escalationOf, escalationHeadRole, resolveAssignee, type TaskCtx } from '../domain/tasks';
 import { buildFpkActions } from './fpkActions';
 import { buildSpkActions } from './spkActions';
 import { buildMemoActions } from './memoActions';
@@ -258,7 +258,24 @@ function buildMasterActions(exec: (fn: (tx: Tx) => Result) => Result) {
       if (tx.s.sites.some(y => y.id !== x.id && norm(y.code) === norm(x.code))) return fail('Kode site sudah dipakai.');
       if (tx.s.sites.some(y => y.id !== x.id && y.clientId === x.clientId && norm(y.name) === norm(x.name))) return fail('Nama site sudah dipakai untuk klien ini.');
       const i = tx.s.sites.findIndex(y => y.id === x.id);
+      const prevArea = i >= 0 ? tx.s.sites[i].areaId : undefined;
       if (i >= 0) tx.s.sites[i] = x; else tx.s.sites.push({ ...x, id: tx.id('s') });
+      if (prevArea && prevArea !== x.areaId) {
+        // Site pindah area: tugas terbuka PIC area dan Operasional ikut ke pemegang area baru.
+        const area = tx.s.areas.find(a => a.id === x.areaId);
+        const siteOf = (t: Task) => t.refType === 'fpk' ? tx.s.fpks.find(f => f.id === t.refId)?.versions.at(-1)?.siteId
+          : t.refType === 'spk' ? tx.s.spks.find(y => y.id === t.refId)?.siteId
+          : t.refType === 'memo' ? tx.s.spks.find(y => y.id === tx.s.memos.find(m => m.id === t.refId)?.spkId)?.siteId : undefined;
+        tx.s.tasks.forEach(t => {
+          if (t.status !== 'terbuka' || siteOf(t) !== x.id) return;
+          const next = t.assigneeRole === 'PIC Area' ? area?.picUserId
+            : t.assigneeRole === 'Operasional' ? resolveAssignee('Operasional', x.clientId, x.id, tx.s.assignments, tx.s.users, tx.s.sites) : undefined;
+          if (!next || next === t.assigneeUserId) return;
+          t.assigneeUserId = next;
+          tx.audit({ entity: 'tugas', entityId: t.id, action: `Tugas ikut pindah area site ${x.name}: ${t.title}`, after: tx.s.users.find(u => u.id === next)?.name });
+          tx.notify(`Site ${x.name} pindah ke area ${area?.name}. Tugas ini sekarang milik Anda: ${t.title}`, [next], { refType: t.refType, refId: t.refId });
+        });
+      }
       tx.audit({ entity: 'site', entityId: x.id || 'baru', action: i >= 0 ? 'Ubah site' : 'Buat site', after: `${x.code} ${x.name}${x.active ? '' : ' (nonaktif)'}` });
       return ok();
     }),
@@ -302,6 +319,25 @@ function buildMasterActions(exec: (fn: (tx: Tx) => Result) => Result) {
       if (tx.s.users.some(x => x.id !== u.id && norm(x.email) === norm(u.email))) return fail('Email sudah dipakai.');
       const i = tx.s.users.findIndex(x => x.id === u.id);
       const before = i >= 0 ? tx.s.users[i] : undefined;
+      if (before) {
+        // Nonaktif atau peran dicabut: jangan tinggalkan klien/area/tugas tanpa pemilik.
+        const lostMkt = before.roles.includes('Marketing') && (!u.active || !u.roles.includes('Marketing'));
+        const lostPic = before.roles.includes('PIC Area') && (!u.active || !u.roles.includes('PIC Area'));
+        const owned = tx.s.clients.filter(c => c.accountOwnerId === u.id);
+        if (lostMkt && owned.length) return fail(`Masih account owner ${owned.map(c => c.name).join(', ')}. Ganti account owner di data klien dulu.`);
+        const picOf = tx.s.areas.filter(a => a.picUserId === u.id || a.backupPicUserId === u.id);
+        if (lostPic && picOf.length) return fail(`Masih PIC area ${picOf.map(a => a.name).join(', ')}. Ganti PIC di data area dulu.`);
+        if (lostMkt) tx.s.clients.forEach(c => { if (c.coOwnerIds.includes(u.id)) { c.coOwnerIds = c.coOwnerIds.filter(x => x !== u.id); tx.audit({ entity: 'klien', entityId: c.id, action: `Co-owner dilepas: ${u.name} (nonaktif/peran dicabut)` }); } });
+        tx.s.tasks.forEach(t => {
+          if (t.status !== 'terbuka' || t.assigneeUserId !== u.id) return;
+          if (u.active && u.roles.includes(t.assigneeRole)) return;
+          // Pindah ke kepala divisi; bila tidak ada, kembali ke semua user dengan peran itu.
+          const head = tx.s.users.find(x => x.id !== u.id && x.active && x.headOf.includes(escalationHeadRole(t.assigneeRole)) && x.roles.includes(t.assigneeRole));
+          t.assigneeUserId = head?.id;
+          tx.audit({ entity: 'tugas', entityId: t.id, action: `Tugas dipindah (${u.name} nonaktif/peran dicabut): ${t.title}`, after: head?.name ?? `semua ${t.assigneeRole}` });
+          if (head) tx.notify(`Tugas dipindah ke Anda karena ${u.name} nonaktif: ${t.title}`, [head.id], { refType: t.refType, refId: t.refId });
+        });
+      }
       if (i >= 0) tx.s.users[i] = u; else tx.s.users.push({ ...u, id: tx.id('u') });
       tx.audit({
         entity: 'user', entityId: u.id || 'baru', action: before ? 'Ubah user' : 'Buat user',

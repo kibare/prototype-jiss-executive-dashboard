@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/store';
-import { Badge, Card, Money, PageHeader, Select, Stat, Table, Td, ExportBtn, exportCsv } from '../../ui/kit';
+import { Badge, Card, Money, PageHeader, Select, Stat, Table, Td, ExportBtn, exportCsv, DocLink } from '../../ui/kit';
 import { Link } from '../../router';
 import { withoutSpkList, lapsedSpkList, latest } from '../../domain/selectors';
 import { SPK_STATUS } from '../../domain/labels';
@@ -52,7 +52,7 @@ export const WithoutSpkPage: React.FC = () => {
               <tr key={x.fpk.id} className={x.days > escalateAt ? 'bg-rose-50/50' : ''}>
                 <Td>
                   <div className="font-medium">{c?.name}</div>
-                  <Link to={`/fpk/${x.fpk.id}`} className="text-xs text-indigo-700 hover:underline">{x.site?.name} · {x.fpk.number}</Link>
+                  <DocLink to={`/fpk/${x.fpk.id}`} className="text-xs text-indigo-700 hover:underline">{x.site?.name} · {x.fpk.number}</DocLink>
                 </Td>
                 <Td>{lookups.area.get(x.site?.areaId ?? '')?.name}</Td>
                 <Td>{lookups.user.get(c?.accountOwnerId ?? '')?.name}</Td>
@@ -64,7 +64,7 @@ export const WithoutSpkPage: React.FC = () => {
                 <Td><Money value={x.held} clientId={v.clientId} className="font-semibold" /></Td>
                 <Td>
                   {x.pendingSpk
-                    ? <Link to={`/spk/${x.pendingSpk.id}`}><Badge tone={SPK_STATUS[x.pendingSpk.status].tone}>{SPK_STATUS[x.pendingSpk.status].label}</Badge></Link>
+                    ? <DocLink to={`/spk/${x.pendingSpk.id}`}><Badge tone={SPK_STATUS[x.pendingSpk.status].tone}>{SPK_STATUS[x.pendingSpk.status].label}</Badge></DocLink>
                     : <Badge tone="red">Belum ada SPK</Badge>}
                   {x.fpk.status === 'tertutup_sebagian' && <div className="text-[11px] text-slate-500 mt-1">sebagian sudah tertutup</div>}
                 </Td>
@@ -87,7 +87,7 @@ export const WithoutSpkPage: React.FC = () => {
                   <tr key={x.spk.id} className="bg-rose-50/50">
                     <Td>
                       <div className="font-medium">{c?.name}</div>
-                      <Link to={`/spk/${x.spk.id}`} className="text-xs text-indigo-700 hover:underline">{x.site?.name} · {x.spk.number} (berakhir {fmtDate(x.spk.periodEnd)})</Link>
+                      <DocLink to={`/spk/${x.spk.id}`} className="text-xs text-indigo-700 hover:underline">{x.site?.name} · {x.spk.number} (berakhir {fmtDate(x.spk.periodEnd)})</DocLink>
                     </Td>
                     <Td>{lookups.area.get(x.site?.areaId ?? '')?.name}</Td>
                     <Td>{lookups.user.get(c?.accountOwnerId ?? '')?.name}</Td>
@@ -96,7 +96,7 @@ export const WithoutSpkPage: React.FC = () => {
                     <Td><Money value={x.held} clientId={x.spk.clientId} className="font-semibold" /></Td>
                     <Td>
                       {x.pendingSpk
-                        ? <Link to={`/spk/${x.pendingSpk.id}`}><Badge tone={SPK_STATUS[x.pendingSpk.status].tone}>{SPK_STATUS[x.pendingSpk.status].label}</Badge></Link>
+                        ? <DocLink to={`/spk/${x.pendingSpk.id}`}><Badge tone={SPK_STATUS[x.pendingSpk.status].tone}>{SPK_STATUS[x.pendingSpk.status].label}</Badge></DocLink>
                         : <Badge tone="red">Belum ada perpanjangan</Badge>}
                     </Td>
                   </tr>

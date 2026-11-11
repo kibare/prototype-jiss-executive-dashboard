@@ -2,7 +2,7 @@
 import type { Result, Tx } from './store';
 import { fail, ok } from './store';
 import type { PersonnelStatus, Task } from '../domain/types';
-import { NOW, TODAY } from '../domain/time';
+import { NOW, TODAY, diffDays, fmtDate } from '../domain/time';
 import { taskReason, escalationHeadRole, type TaskCtx } from '../domain/tasks';
 import { has } from '../domain/rbac';
 
@@ -66,6 +66,23 @@ export function buildTaskActions(exec: (fn: (tx: Tx) => Result) => Result, ctx: 
     return ok();
   });
 
+  /** Penerima eskalasi turun tangan: catat tindakan + target tanggal baru. Tugas tetap milik pemilik awal; hitungan eskalasi mulai lagi dari target baru. */
+  const interveneTask = (taskId: string, note: string, newDue: string) => exec(tx => {
+    const t = tx.s.tasks.find(x => x.id === taskId);
+    if (!t || t.status !== 'terbuka') return fail('Tugas sudah tidak terbuka.');
+    const reason = taskReason(tx.me, t, ctx());
+    if (reason !== 'eskalasi-kepala' && reason !== 'eskalasi-bod') return fail('Turun tangan hanya untuk tugas yang dieskalasi ke Anda.');
+    if (!note.trim()) return fail('Tulis tindakan yang Anda ambil.');
+    if (!newDue || diffDays(TODAY, newDue) < 0) return fail('Target tanggal baru tidak boleh sebelum hari ini.');
+    t.interventions = [...(t.interventions ?? []), { by: tx.me.id, note: note.trim(), newDue, at: NOW }];
+    const before = t.dueAt;
+    t.dueAt = newDue;
+    tx.audit({ entity: 'tugas', entityId: t.id, action: `Turun tangan: ${t.title}`, before: `Batas ${fmtDate(before)}`, after: `${note.trim()} · target baru ${fmtDate(newDue)}` });
+    const owners = t.assigneeUserId ? [t.assigneeUserId] : tx.s.users.filter(u => u.active && u.roles.includes(t.assigneeRole)).map(u => u.id);
+    tx.notify(`${tx.me.name} turun tangan: ${note.trim()}. Target baru ${fmtDate(newDue)} untuk "${t.title}".`, owners, { refType: t.refType, refId: t.refId });
+    return ok();
+  });
+
   const setPersonnelStatus = (personnelId: string, status: PersonnelStatus, reason: string) => exec(tx => {
     if (!has(tx.me, 'HR')) return fail('Hanya HR.');
     const p = tx.s.personnel.find(x => x.id === personnelId);
@@ -115,5 +132,5 @@ export function buildTaskActions(exec: (fn: (tx: Tx) => Result) => Result, ctx: 
     return ok();
   });
 
-  return { completeTask, reassignTask, setPersonnelStatus, restoreMutation, openAttachment };
+  return { completeTask, reassignTask, interveneTask, setPersonnelStatus, restoreMutation, openAttachment };
 }

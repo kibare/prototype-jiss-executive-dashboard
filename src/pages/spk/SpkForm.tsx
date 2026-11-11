@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Paperclip } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { Btn, Card, ErrorText, Field, Input, PageHeader, Select, toast } from '../../ui/kit';
+import { Btn, Card, ErrorText, Field, Input, PageHeader, Select, toast, DateInput } from '../../ui/kit';
 import { navigate } from '../../router';
 import { NotFound } from '../Misc';
 import { fpkCoverage, latest } from '../../domain/selectors';
@@ -84,15 +84,15 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
                 </Select>
               </Field>
             )}
-            {type === 'addendum' && <Field label="Tanggal berlaku addendum" required hint="Addendum menyimpan komposisi lengkap setelah perubahan, bukan selisih."><Input type="date" value={effectiveDate} onChange={e => setEff(e.target.value)} /></Field>}
+            {type === 'addendum' && <Field label="Tanggal berlaku addendum" required hint="Addendum menyimpan komposisi lengkap setelah perubahan, bukan selisih."><DateInput value={effectiveDate} onChange={e => setEff(e.target.value)} /></Field>}
             <Field label="Site" required>
               <Select value={siteId} onChange={e => setSiteId(e.target.value)} disabled={!clientId}>
                 <option value="">– pilih –</option>
                 {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>
             </Field>
-            <Field label="Periode mulai" required><Input type="date" value={periodStart} onChange={e => setPS(e.target.value)} /></Field>
-            <Field label="Periode selesai" required><Input type="date" value={periodEnd} onChange={e => setPE(e.target.value)} /></Field>
+            <Field label="Periode mulai" required><DateInput value={periodStart} onChange={e => setPS(e.target.value)} /></Field>
+            <Field label="Periode selesai" required><DateInput value={periodEnd} onChange={e => setPE(e.target.value)} /></Field>
             <Field label="Nilai per bulan (Rp)" required><Input type="number" value={monthlyValue || ''} onChange={e => setValue(Number(e.target.value))} /></Field>
             <Field label="PDF SPK" required>
               {pdf ? (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Undo2, Ban, Search, TrendingDown, AlertTriangle, PlayCircle, ThumbsUp, XCircle } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { AttachmentChip, Badge, Btn, Card, ErrorText, Field, Input, Money, Select, Textarea, cx, toast } from '../../ui/kit';
+import { AttachmentChip, Badge, Btn, Card, ErrorText, Field, Input, Money, Select, Textarea, cx, toast, DateInput } from '../../ui/kit';
 import { ReasonModal } from '../../ui/ReasonModal';
 import { latest } from '../../domain/selectors';
 import { SOURCE_LABEL } from '../../domain/labels';
@@ -121,7 +121,7 @@ const RecPanel: React.FC<{ f: Fpk }> = ({ f }) => {
             </div>
           );
         })}
-        <Field label="Perkiraan tanggal siap" required><Input type="date" value={ready} onChange={e => setReady(e.target.value)} className="sm:w-48" /></Field>
+        <Field label="Perkiraan tanggal siap" required><DateInput value={ready} onChange={e => setReady(e.target.value)} className="sm:w-48" /></Field>
       </div>
       <div className="mt-3"><ErrorText>{err}</ErrorText></div>
       <div className="flex justify-end mt-3">

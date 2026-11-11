@@ -140,7 +140,7 @@ export const SiteDetail: React.FC<{ id: string }> = ({ id }) => {
       </Card>
       <QuotaTable areaId={s.areaId} siteId={s.id} />
       {access.can('fpk.view') && <FpkMiniTable fpks={running.fpks} />}
-      {access.can('spk.view') && <SpkMiniTable spks={running.spks} title="SPK berjalan" />}
+      {access.can('spk.view') && <SpkMiniTable spks={running.spks} title="SPK aktif dan dalam proses" />}
       {edit && <SiteForm site={s} onClose={() => setEdit(false)} />}
     </div>
   );

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../../store/store';
-import { Btn, Card, ErrorText, Field, Input, PageHeader, Select, runAction } from '../../ui/kit';
+import { Btn, Card, ErrorText, Field, Input, PageHeader, Select, runAction, DateInput } from '../../ui/kit';
 import type { Delegation } from '../../domain/types';
 
 export const DelegationPage: React.FC = () => {
@@ -35,8 +35,8 @@ export const DelegationPage: React.FC = () => {
           </Field>
           {f.mode === 'periode' && (
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Mulai"><Input type="date" value={f.startDate ?? ''} onChange={e => setF({ ...f, startDate: e.target.value })} /></Field>
-              <Field label="Selesai"><Input type="date" value={f.endDate ?? ''} onChange={e => setF({ ...f, endDate: e.target.value })} /></Field>
+              <Field label="Mulai"><DateInput value={f.startDate ?? ''} onChange={e => setF({ ...f, startDate: e.target.value })} /></Field>
+              <Field label="Selesai"><DateInput value={f.endDate ?? ''} onChange={e => setF({ ...f, endDate: e.target.value })} /></Field>
             </div>
           )}
           <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">Aturan pembuat ≠ penyetuju tetap berlaku: bila wakil adalah pembuat FPK atau memo, persetujuannya tetap harus oleh BOD.</p>

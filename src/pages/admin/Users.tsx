@@ -50,7 +50,7 @@ const UserForm: React.FC<{ user: User | null; onClose: () => void }> = ({ user, 
           </div>
         </Field>
       )}
-      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.active} onChange={e => setF({ ...f, active: e.target.checked })} /> Aktif (menonaktifkan user langsung mengeluarkannya dari semua sesi)</label>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.active} onChange={e => setF({ ...f, active: e.target.checked })} /> Aktif (nonaktif: keluar dari semua sesi, tugas terbukanya pindah ke kepala divisi)</label>
       <p className="text-[11px] text-slate-500">Admin tidak pernah melihat atau mengetik kata sandi. User membuat kata sandi sendiri lewat email undangan. 2FA untuk BOD dan Finance menyusul sebagai modul terpisah.</p>
       <ErrorText>{err}</ErrorText>
     </Modal>

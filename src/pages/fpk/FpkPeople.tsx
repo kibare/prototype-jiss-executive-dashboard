@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Circle, UserPlus, ArrowRightLeft } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { Badge, Btn, Card, ErrorText, Input, Select, cx, toast } from '../../ui/kit';
+import { Badge, Btn, Card, ErrorText, Input, Select, cx, toast, DateInput } from '../../ui/kit';
 import { latest, currentPlacement } from '../../domain/selectors';
 import { PERSONNEL_STATUS } from '../../domain/labels';
 import { fmtDate } from '../../domain/time';
@@ -55,7 +55,7 @@ const MutationStep: React.FC<{ f: Fpk; src: Src }> = ({ f, src }) => {
           ))}
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
             <span className="text-xs text-slate-600">Tanggal efektif</span>
-            <Input type="date" value={eff} onChange={e => setEff(e.target.value)} className="w-40" />
+            <DateInput value={eff} onChange={e => setEff(e.target.value)} className="w-40" />
             <Btn size="sm" icon={<ArrowRightLeft className="w-3.5 h-3.5" />} onClick={() => run(actions.releaseForMutation(f.id, src.key, pick, eff), 'Personel dilepas untuk mutasi')}>Lepas ({pick.length}/{src.qty})</Btn>
           </div>
         </div>

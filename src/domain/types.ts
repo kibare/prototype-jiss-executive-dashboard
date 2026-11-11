@@ -386,6 +386,8 @@ export interface Task {
   subKey?: string;
   /** Pengingat yang sudah dikirim (hari ke-n), untuk tugas kejar SPK. */
   remindersSent?: number[];
+  /** Catatan "turun tangan" dari penerima eskalasi (kepala divisi / BOD): tindakan + target tanggal baru. */
+  interventions?: { by: string; note: string; newDue: string; at: string }[];
 }
 
 export interface Notification {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { Btn, Card, Input, PageHeader, Table, Td, runAction, ErrorText } from '../../ui/kit';
+import { Btn, Card, Input, PageHeader, Table, Td, runAction, ErrorText, DateInput } from '../../ui/kit';
 import { addWorkdays, fmtDate, TODAY } from '../../domain/time';
 
 const SettingRow: React.FC<{ k: string; value: string; usedIn: string; desc: string; editable: boolean }> = ({ k, value, usedIn, desc, editable }) => {
@@ -56,7 +56,7 @@ export const SettingsPage: React.FC = () => {
           </Table>
           {editable && (
             <div className="flex flex-col sm:flex-row gap-2 p-3 bg-slate-50 border-t border-slate-200">
-              <Input type="date" value={h.date} onChange={e => setH({ ...h, date: e.target.value })} className="sm:w-44" />
+              <DateInput value={h.date} onChange={e => setH({ ...h, date: e.target.value })} className="sm:w-44" />
               <Input placeholder="Keterangan (libur nasional / cuti bersama)" value={h.description} onChange={e => setH({ ...h, description: e.target.value })} />
               <Btn size="sm" onClick={() => runAction(actions.addHoliday(h), 'Libur ditambahkan', setErr) && setH({ date: '', description: '' })}>Tambah</Btn>
             </div>

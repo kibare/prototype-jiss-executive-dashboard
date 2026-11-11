@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { Badge, Btn, Card, Money, PageHeader, SearchBox, Select, Table, Tabs, Td, ExportBtn, exportCsv } from '../../ui/kit';
+import { Badge, Btn, Card, Money, PageHeader, SearchBox, Select, Table, Tabs, Td, ExportBtn, exportCsv, DocLink } from '../../ui/kit';
 import { Link, navigate } from '../../router';
 import { SPK_STATUS, SPK_TYPE } from '../../domain/labels';
 import { effectiveSpks, spkHeadcount } from '../../domain/selectors';
@@ -53,7 +53,7 @@ export const SpkListPage: React.FC = () => {
             return (
               <tr key={s.id}>
                 <Td>
-                  <Link to={`/spk/${s.id}`} className="font-semibold text-indigo-700 hover:underline whitespace-nowrap">{s.number}</Link>
+                  <DocLink to={`/spk/${s.id}`} className="font-semibold text-indigo-700 hover:underline whitespace-nowrap">{s.number}</DocLink>
                   <div className="flex flex-wrap gap-1 mt-1">
                     <span className="text-xs text-slate-500">{SPK_TYPE[s.type]}</span>
                     {s.isInitialData && <Badge>data awal</Badge>}
@@ -73,7 +73,7 @@ export const SpkListPage: React.FC = () => {
                 <Td className="text-xs whitespace-nowrap">{fmtDate(s.periodStart)} – {fmtDate(s.periodEnd)}</Td>
                 <Td className="tabular-nums">{spkHeadcount(s)}</Td>
                 <Td><Money value={s.monthlyValue} clientId={s.clientId} /></Td>
-                <Td>{s.fpkId ? <Link to={`/fpk/${s.fpkId}`} className="text-indigo-700 hover:underline text-xs">{lookups.fpk.get(s.fpkId)?.number}</Link> : <span className="text-xs text-slate-400">tanpa FPK (data awal)</span>}</Td>
+                <Td>{s.fpkId ? <DocLink to={`/fpk/${s.fpkId}`} className="text-indigo-700 hover:underline text-xs">{lookups.fpk.get(s.fpkId)?.number}</DocLink> : <span className="text-xs text-slate-400">tanpa FPK (data awal)</span>}</Td>
               </tr>
             );
           })}

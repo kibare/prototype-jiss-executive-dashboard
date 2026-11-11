@@ -29,7 +29,7 @@ export const AssignmentsPage: React.FC = () => {
         <Table head={['Area', 'PIC utama', 'PIC cadangan', '']}>
           {state.areas.filter(a => a.active).map(a => (
             <tr key={a.id}>
-              <Td><Link to={`/area/${a.id}`} className="font-semibold text-indigo-700 hover:underline">{a.name}</Link></Td>
+              <Td>{access.area(a.id) ? <Link to={`/area/${a.id}`} className="font-semibold text-indigo-700 hover:underline">{a.name}</Link> : <span className="font-semibold">{a.name}</span>}</Td>
               <Td>{lookups.user.get(a.picUserId ?? '')?.name ?? <span className="text-rose-600 text-xs font-semibold">Belum ada</span>}</Td>
               <Td>{lookups.user.get(a.backupPicUserId ?? '')?.name ?? '–'}</Td>
               <Td>{editable && <Btn size="sm" variant="ghost" icon={<Pencil className="w-3.5 h-3.5" />} onClick={() => setEditArea(a)}>Ganti</Btn>}</Td>

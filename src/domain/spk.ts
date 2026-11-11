@@ -1,6 +1,24 @@
 // Perbandingan SPK dengan FPK untuk layar verifikasi Finance.
 import type { Fpk, Spk } from './types';
 import { latest } from './selectors';
+import { diffDays } from './time';
+
+/**
+ * Periode mulai SPK dibanding mulai jaga (atau periode FPK bila belum mulai jaga).
+ * SPK yang mulai lebih lambat tetap cocok: selisih harinya dicatat sebagai hari tidak tertagih (PRD SPK no. 3).
+ * Yang dianggap beda hanya SPK yang mulai lebih awal dari acuan.
+ */
+const periodStartRow = (s: Spk, startedAt: string | undefined, fpkStart: string, date: (d: string) => string): FieldDiff => {
+  const base = startedAt ?? fpkStart;
+  const gap = diffDays(base, s.periodStart);
+  const ref = startedAt ? `mulai jaga ${date(startedAt)}` : date(fpkStart);
+  return {
+    field: 'Periode mulai',
+    spk: date(s.periodStart),
+    fpk: gap > 0 && startedAt ? `${ref} · ${gap} hari tidak tertagih` : gap > 0 ? `${ref} · SPK mulai lebih lambat` : ref,
+    same: gap >= 0,
+  };
+};
 
 export interface FieldDiff {
   field: string;
@@ -24,7 +42,7 @@ export const compareSpkFpk = (
   const expected = fpkHead ? (v.monthlyValue * spkHead) / fpkHead : v.monthlyValue;
   const rows: FieldDiff[] = [
     { field: 'Site', spk: names.site(s.siteId), fpk: names.site(v.siteId), same: s.siteId === v.siteId },
-    { field: 'Periode mulai', spk: names.date(s.periodStart), fpk: names.date(f.startedAt ?? v.periodStart), same: s.periodStart === (f.startedAt ?? v.periodStart) },
+    periodStartRow(s, f.startedAt, v.periodStart, names.date),
     { field: 'Periode selesai', spk: names.date(s.periodEnd), fpk: names.date(v.periodEnd), same: s.periodEnd === v.periodEnd },
     spkHead < fpkHead
       ? {

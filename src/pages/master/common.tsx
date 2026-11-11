@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '../../store/store';
-import { Badge, Card, Table, Td, Money, cx } from '../../ui/kit';
+import { Badge, Card, Table, Td, Money, cx, DocLink } from '../../ui/kit';
 import { Link } from '../../router';
 import { FPK_STATUS, SPK_STATUS } from '../../domain/labels';
 import { activeByPosition, effectiveSpks, latest, quotaByPosition, spkHeadcount } from '../../domain/selectors';
@@ -63,7 +63,7 @@ export const FpkMiniTable: React.FC<{ fpks: Fpk[]; title?: string }> = ({ fpks, 
           const v = latest(f);
           return (
             <tr key={f.id}>
-              <Td><Link to={`/fpk/${f.id}`} className="font-semibold text-indigo-700 hover:underline">{f.number}</Link></Td>
+              <Td><DocLink to={`/fpk/${f.id}`} className="font-semibold text-indigo-700 hover:underline">{f.number}</DocLink></Td>
               <Td>
                 <div className="font-medium">{lookups.client.get(v.clientId)?.name}</div>
                 <div className="text-xs text-slate-500">{lookups.site.get(v.siteId)?.name}</div>
@@ -88,7 +88,7 @@ export const SpkMiniTable: React.FC<{ spks: Spk[]; title?: string }> = ({ spks, 
         {spks.map(s => (
           <tr key={s.id}>
             <Td>
-              <Link to={`/spk/${s.id}`} className="font-semibold text-indigo-700 hover:underline whitespace-nowrap">{s.number}</Link>
+              <DocLink to={`/spk/${s.id}`} className="font-semibold text-indigo-700 hover:underline whitespace-nowrap">{s.number}</DocLink>
               {s.isInitialData && <div><Badge tone="slate" className="mt-1">data awal</Badge></div>}
             </Td>
             <Td>

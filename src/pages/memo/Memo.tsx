@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2, ThumbsUp, Undo2, TrendingDown, Plus, Paperclip, Trash2, Handshake, XCircle, MessageSquare } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { AttachmentChip, Badge, Btn, Card, DL, ErrorText, Field, Input, Money, PageHeader, Table, Tabs, Td, cx, toast } from '../../ui/kit';
+import { AttachmentChip, Badge, Btn, Card, DL, ErrorText, Field, Input, Money, PageHeader, Table, Tabs, Td, cx, toast, DateInput } from '../../ui/kit';
 import { ReasonModal } from '../../ui/ReasonModal';
 import { Link, navigate } from '../../router';
 import { NotFound } from '../Misc';
@@ -237,7 +237,7 @@ const ActionCard: React.FC<{ m: Memo }> = ({ m }) => {
         <div className="grid sm:grid-cols-3 gap-3">
           <FilePick label="Memo bertanda tangan" value={signed} onChange={setSigned} />
           <FilePick label="Bukti kirim" value={proof} onChange={setProof} />
-          <Field label="Tanggal kirim" required><Input type="date" value={sent} onChange={e => setSent(e.target.value)} /></Field>
+          <Field label="Tanggal kirim" required><DateInput value={sent} onChange={e => setSent(e.target.value)} /></Field>
         </div>
         <div className="mt-3"><ErrorText>{err}</ErrorText></div>
         <div className="flex justify-end mt-3"><Btn icon={<Send className="w-4 h-4" />} onClick={() => run(actions.sendMemo(m.id, signed, proof, sent), 'Memo ditandai terkirim')}>Tandai terkirim</Btn></div>

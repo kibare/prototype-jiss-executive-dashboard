@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, XCircle, ThumbsUp, Lock, AlertTriangle, FileEdit, Receipt } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { AttachmentChip, Badge, Btn, Card, DL, Input, Money, PageHeader, Table, Td, cx, toast } from '../../ui/kit';
+import { AttachmentChip, Badge, Btn, Card, DL, Input, Money, PageHeader, Table, Td, cx, toast, DocLink } from '../../ui/kit';
 import { ReasonModal } from '../../ui/ReasonModal';
 import { Link, navigate } from '../../router';
 import { NotFound } from '../Misc';
@@ -133,13 +133,13 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
           {contract && (
             <Card title="Isi kontrak yang berlaku" actions={<Input type="date" value={asOf} onChange={e => setAsOf(e.target.value)} className="w-40" aria-label="Tanggal acuan" />}>
               <p className="text-sm text-slate-600 mb-3">
-                Pada {fmtDate(asOf || TODAY)} yang berlaku: <Link to={`/spk/${contract.id}`} className="font-semibold text-indigo-700 hover:underline">{contract.number}</Link>
+                Pada {fmtDate(asOf || TODAY)} yang berlaku: <DocLink to={`/spk/${contract.id}`} className="font-semibold text-indigo-700 hover:underline">{contract.number}</DocLink>
                 {contract.type === 'addendum' ? ` (addendum, berlaku sejak ${fmtDate(contract.effectiveDate ?? contract.periodStart)})` : ' (SPK induk)'} · <Money value={contract.monthlyValue} clientId={contract.clientId} /> per bulan
               </p>
               <div className="text-sm mb-3">{contract.lines.map(l => `${l.qty} ${lookups.position.get(l.positionId)?.name} (${l.shift})`).join(', ')}</div>
               <div className="text-xs text-slate-500 border-t border-slate-100 pt-2 space-y-1">
                 <div>Riwayat: {root.number} mulai {fmtDate(root.periodStart)}</div>
-                {addenda.map(a => <div key={a.id}><Link to={`/spk/${a.id}`} className="text-indigo-700 hover:underline">{a.number}</Link> berlaku {fmtDate(a.effectiveDate ?? a.periodStart)} · <Badge tone={SPK_STATUS[a.status].tone}>{SPK_STATUS[a.status].label}</Badge></div>)}
+                {addenda.map(a => <div key={a.id}><DocLink to={`/spk/${a.id}`} className="text-indigo-700 hover:underline">{a.number}</DocLink> berlaku {fmtDate(a.effectiveDate ?? a.periodStart)} · <Badge tone={SPK_STATUS[a.status].tone}>{SPK_STATUS[a.status].label}</Badge></div>)}
               </div>
             </Card>
           )}
@@ -159,8 +159,8 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               ['Periode', `${fmtDate(s.periodStart)} – ${fmtDate(s.periodEnd)}`],
               ...(s.effectiveDate ? [['Berlaku addendum', fmtDate(s.effectiveDate)] as [string, string]] : []),
               ['Nilai per bulan', <Money value={s.monthlyValue} clientId={s.clientId} className="font-semibold" />],
-              ['FPK induk', f ? <Link to={`/fpk/${f.id}`} className="text-indigo-700 hover:underline">{f.number}</Link> : 'Tanpa FPK (data awal)'],
-              ...(parent ? [['SPK induk', <Link to={`/spk/${parent.id}`} className="text-indigo-700 hover:underline">{parent.number}</Link>] as [string, React.ReactNode]] : []),
+              ['FPK induk', f ? <DocLink to={`/fpk/${f.id}`} className="text-indigo-700 hover:underline">{f.number}</DocLink> : 'Tanpa FPK (data awal)'],
+              ...(parent ? [['SPK induk', <DocLink to={`/spk/${parent.id}`} className="text-indigo-700 hover:underline">{parent.number}</DocLink>] as [string, React.ReactNode]] : []),
               ['Diverifikasi', s.verifiedBy ? `${lookups.user.get(s.verifiedBy)?.name}, ${fmtDate(s.verifiedAt)} (${s.verdict})` : 'Belum'],
               ...(unbilled ? [['Hari tidak tertagih', <span className="text-amber-700 font-semibold">{unbilled} hari (mulai jaga {fmtDate(f!.startedAt!)}, periode SPK mulai {fmtDate(s.periodStart)})</span>] as [string, React.ReactNode]] : []),
               ...(s.lapsedFrom ? [['Jalan tanpa SPK', <span className="text-rose-700 font-semibold">sejak {fmtDate(s.lapsedFrom)} (SPK berakhir, site masih dijaga)</span>] as [string, React.ReactNode]] : []),

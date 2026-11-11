@@ -35,7 +35,8 @@ const UNSCOPED: Role[] = ['Marketing', 'Recruitment', 'HR', 'Pengadaan', 'Financ
 
 /** Lingkup area: PIC Area dan Operasional hanya melihat area yang dipegang (kecuali punya peran lain yang tidak dibatasi). */
 export const canSeeArea = (u: User, areaId: string, delegations: Delegation[]) =>
-  hasAny(u, UNSCOPED) || isDeputy(u, delegations) || u.areaIds.includes(areaId);
+  // Kepala Operasional (tujuan eskalasi tugas Ops dan PIC area) melihat semua area.
+  hasAny(u, UNSCOPED) || isDeputy(u, delegations) || u.headOf.includes('Operasional') || u.areaIds.includes(areaId);
 
 export type Perm =
   | 'tasks.view'
@@ -64,7 +65,7 @@ const PERMS: Record<Perm, Role[]> = {
   'fpk.create': ['Marketing'],
   'spk.view': ['Marketing', 'Operasional', 'HR', 'PIC Area', 'Finance', 'BOD', 'Admin sistem'],
   'spk.input': ['Marketing'],
-  'memo.view': ['Marketing', 'Operasional', 'Finance', 'BOD'],
+  'memo.view': ['Marketing', 'Operasional', 'HR', 'Finance', 'BOD'],
   'admin.view': ['BOD', 'Admin sistem'],
   'admin.edit': ['Admin sistem'],
   'audit.view': ['BOD', 'Admin sistem'],

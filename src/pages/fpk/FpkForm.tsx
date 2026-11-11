@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Plus, Trash2, Paperclip, Info } from 'lucide-react';
 import { useStore } from '../../store/store';
-import { Btn, Card, ErrorText, Field, Input, PageHeader, Select, toast } from '../../ui/kit';
+import { Btn, Card, ErrorText, Field, Input, PageHeader, Select, toast, DateInput } from '../../ui/kit';
 import { navigate } from '../../router';
 import { NotFound } from '../Misc';
 import { latest } from '../../domain/selectors';
@@ -180,9 +180,9 @@ export const FpkFormPage: React.FC<{ fpkId?: string }> = ({ fpkId }) => {
             </Field>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
-            <Field label="Periode mulai" required><Input type="date" value={periodStart} onChange={e => { setPS(e.target.value); if (!plannedStart) setPlanned(e.target.value); if (!periodEnd && e.target.value) setPE(addDays(addDays(e.target.value, 365), -1)); }} /></Field>
-            <Field label="Periode selesai" required><Input type="date" value={periodEnd} onChange={e => setPE(e.target.value)} /></Field>
-            <Field label="Tanggal mulai rencana" required><Input type="date" value={plannedStart} min={TODAY} onChange={e => setPlanned(e.target.value)} /></Field>
+            <Field label="Periode mulai" required><DateInput value={periodStart} onChange={e => { setPS(e.target.value); if (!plannedStart) setPlanned(e.target.value); if (!periodEnd && e.target.value) setPE(addDays(addDays(e.target.value, 365), -1)); }} /></Field>
+            <Field label="Periode selesai" required><DateInput value={periodEnd} onChange={e => setPE(e.target.value)} /></Field>
+            <Field label="Tanggal mulai rencana" required><DateInput value={plannedStart} min={TODAY} onChange={e => setPlanned(e.target.value)} /></Field>
           </div>
         </Card>
 

@@ -11,10 +11,29 @@ import type { Division, Fpk } from '../../domain/types';
 
 const ACTIVE: Fpk['status'][] = ['draf', 'cek_divisi', 'cek_margin', 'menunggu_bod', 'dikembalikan', 'disetujui', 'berjalan', 'tertutup_sebagian'];
 
-export const CheckChips: React.FC<{ f: Fpk }> = ({ f }) => {
+const RESULT_TEXT: Record<string, string> = { cocok: 'Cocok', ada_perubahan: 'Ada perubahan', selesai: 'Selesai', kembalikan: 'Dikembalikan', tidak_layak: 'Tidak layak' };
+
+export const CheckChips: React.FC<{ f: Fpk; labeled?: boolean }> = ({ f, labeled }) => {
   const v = latest(f);
   const divs: Division[] = ['Operasional', 'Recruitment', 'Pengadaan', 'Finance'];
   if (f.status === 'draf') return <span className="text-xs text-slate-400">Belum dikirim</span>;
+  if (labeled) {
+    return (
+      <ul className="space-y-1.5">
+        {divs.map(d => {
+          const r = [...f.reviews].reverse().find(x => x.versionNo === v.no && x.division === d);
+          const pending = f.pendingDivisions.includes(d) || (d === 'Finance' && f.status === 'cek_margin');
+          const [dot, txt] = r?.result === 'kembalikan' ? ['bg-amber-400', 'Dikembalikan'] : r?.result === 'tidak_layak' ? ['bg-rose-500', 'Tidak layak'] : r ? ['bg-emerald-500', RESULT_TEXT[r.result] ?? 'Selesai'] : pending ? ['bg-blue-400', 'Sedang dicek'] : ['bg-slate-300', 'Belum'];
+          return (
+            <li key={d} className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex items-center gap-2"><span className={`w-2.5 h-2.5 rounded-full ${dot}`} />{d === 'Finance' ? 'Finance (margin)' : d}</span>
+              <span className="text-slate-600">{txt}</span>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
   return (
     <div className="flex gap-1">
       {divs.map(d => {

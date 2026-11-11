@@ -29,9 +29,9 @@ const STEPS: { key: string; label: string }[] = [
   { key: 'cek_margin', label: 'Cek margin' },
   { key: 'menunggu_bod', label: 'Menunggu BOD' },
   { key: 'disetujui', label: 'Disetujui' },
-  { key: 'berjalan', label: 'Berjalan' },
-  { key: 'tertutup_sebagian', label: 'Tertutup sebagian' },
-  { key: 'selesai', label: 'Selesai' },
+  { key: 'berjalan', label: 'Jalan, belum SPK' },
+  { key: 'tertutup_sebagian', label: 'Sebagian SPK' },
+  { key: 'selesai', label: 'SPK lengkap' },
 ];
 
 export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
@@ -80,11 +80,19 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
       />
 
       {!['dikembalikan', 'ditolak', 'batal'].includes(f.status) && (
-        <div className="flex overflow-x-auto gap-1 pb-1">
+        <>
+        {/* HP: cukup langkah saat ini, supaya tidak terpotong. */}
+        <div className="sm:hidden">
+          <div className="text-sm font-semibold text-slate-800">Langkah {stepIdx + 1} dari {STEPS.length}: {STEPS[stepIdx]?.label}</div>
+          <div className="h-2 rounded-full bg-slate-100 mt-1.5 overflow-hidden"><div className="h-full bg-indigo-600" style={{ width: `${((stepIdx + 1) / STEPS.length) * 100}%` }} /></div>
+          {STEPS[stepIdx + 1] && <div className="text-xs text-slate-500 mt-1">Berikutnya: {STEPS[stepIdx + 1].label}</div>}
+        </div>
+        <div className="hidden sm:flex gap-1">
           {STEPS.map((s, i) => (
             <div key={s.key} className={cx('flex-1 min-w-[88px] text-center text-[11px] font-semibold rounded-md py-1.5 border', i < stepIdx ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : i === stepIdx ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200 text-slate-400')}>{s.label}</div>
           ))}
         </div>
+        </>
       )}
 
       {f.returned && f.status === 'dikembalikan' && (
@@ -180,8 +188,7 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
 
         <div className="space-y-5 min-w-0">
           <Card title="Status cek">
-            <CheckChips f={f} />
-            <div className="text-[11px] text-slate-500 mt-2">Urutan: Operasional · Recruitment · Pengadaan · Finance</div>
+            <CheckChips f={f} labeled />
             {f.pendingDivisions.length > 0 && <p className="text-xs text-slate-600 mt-2">Menunggu: {f.pendingDivisions.join(', ')}</p>}
           </Card>
           <Card title="Lampiran">

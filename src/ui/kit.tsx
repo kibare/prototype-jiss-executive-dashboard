@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft, Lock, Search, X, Paperclip, Download } from 'lucide-react';
 import type { Tone } from '../domain/labels';
-import { fmtRp } from '../domain/time';
+import { fmtDate, fmtRp } from '../domain/time';
 import { useStore } from '../store/store';
-import { navigate } from '../router';
+import { navigate, Link } from '../router';
+import type { Perm } from '../domain/rbac';
 import type { Attachment } from '../domain/types';
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
@@ -125,6 +126,13 @@ export const Field: React.FC<{ label: string; required?: boolean; hint?: string;
 export const inputCls = 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 disabled:bg-slate-50 disabled:text-slate-500';
 
 export const Input = (p: React.InputHTMLAttributes<HTMLInputElement>) => <input {...p} className={cx(inputCls, p.className)} />;
+/** Input tanggal bawaan browser (formatnya ikut bahasa browser) + tanggal tertulis di bawahnya supaya tidak salah baca hari/bulan. */
+export const DateInput = (p: Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'>) => (
+  <div className="min-w-0">
+    <input {...p} type="date" className={cx(inputCls, p.className)} />
+    {typeof p.value === 'string' && p.value && <div className="text-xs text-slate-600 mt-1">{fmtDate(p.value)}</div>}
+  </div>
+);
 export const Select = (p: React.SelectHTMLAttributes<HTMLSelectElement>) => <select {...p} className={cx(inputCls, p.className)} />;
 export const Textarea = (p: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea rows={3} {...p} className={cx(inputCls, p.className)} />;
 
@@ -272,4 +280,13 @@ export const runAction = (r: { ok: boolean; error?: string }, okText: string, se
   }
   if (setErr) setErr(r.error ?? 'Gagal'); else toast(r.error ?? 'Gagal', 'err');
   return false;
+};
+
+const DOC_PERM: [string, Perm][] = [['/fpk/', 'fpk.view'], ['/spk/', 'spk.view'], ['/memo/', 'memo.view'], ['/security/', 'security.view']];
+/** Link ke dokumen yang hanya jadi link bila user boleh membukanya; selain itu teks biasa (tidak menyesatkan ke halaman 404). */
+export const DocLink: React.FC<{ to: string; className?: string; children: React.ReactNode }> = ({ to, className, children }) => {
+  const { access } = useStore();
+  const perm = DOC_PERM.find(([p]) => to.startsWith(p))?.[1];
+  if (perm && !access.can(perm)) return <span className={(className ?? '').replace(/text-indigo-\d+|hover:underline/g, '')}>{children}</span>;
+  return <Link to={to} className={className}>{children}</Link>;
 };

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { CheckSquare, Shuffle } from 'lucide-react';
-import { Field, Modal, Select, Textarea, ErrorText, toast } from '../../ui/kit';
+import { CheckSquare, Shuffle, Hand, Eye } from 'lucide-react';
+import { Field, Modal, Select, Textarea, ErrorText, DateInput, toast } from '../../ui/kit';
 import { MANUAL_KINDS } from '../../store/taskActions';
 import { AlertTriangle, ArrowRight, Clock, CornerDownRight, UserCheck } from 'lucide-react';
 import { useStore } from '../../store/store';
 import { Badge, Btn, Card, Empty, PageHeader, Tabs, cx } from '../../ui/kit';
-import { fmtDate, diffDays, TODAY } from '../../domain/time';
+import { fmtDate, diffDays, addWorkdays, TODAY } from '../../domain/time';
 import { TASK_KIND_LABEL, escalationHeadRole, type TaskReason, type Escalation } from '../../domain/tasks';
 import type { Task } from '../../domain/types';
+import { latest } from '../../domain/selectors';
 import { navigate } from '../../router';
 
 export const refLink = (t: Task) =>
@@ -73,6 +74,31 @@ const CompleteModal: React.FC<{ task: Task; onClose: () => void }> = ({ task, on
   );
 };
 
+/** Tugas yang hanya bisa dikerjakan pemiliknya (pembuat dokumen / Marketing pemegang klien). Penerima eskalasi cukup turun tangan. */
+const OWNER_ONLY: Task['kind'][] = ['perbaiki_fpk', 'memo', 'kirim_memo', 'catat_jawaban', 'input_spk_perpanjangan', 'kejar_spk', 'urus_spk_salah', 'spk_berakhir_jaga'];
+
+const InterveneModal: React.FC<{ task: Task; onClose: () => void }> = ({ task, onClose }) => {
+  const { state, actions } = useStore();
+  const [note, setNote] = useState('');
+  const [due, setDue] = useState(addWorkdays(TODAY, 2, state.holidays));
+  const [err, setErr] = useState('');
+  const go = () => {
+    const r = actions.interveneTask(task.id, note, due);
+    if (!r.ok) return setErr(r.error);
+    toast('Tindakan dicatat, pemilik tugas diberi tahu');
+    onClose();
+  };
+  return (
+    <Modal open title="Turun tangan" onClose={onClose} footer={<><Btn variant="secondary" onClick={onClose}>Batal</Btn><Btn onClick={go}>Simpan</Btn></>}>
+      <p className="text-sm text-slate-600">{task.title}</p>
+      <Field label="Tindakan yang Anda ambil" required hint="Mis. sudah menelepon klien, minta PIC area konfirmasi hari ini."><Textarea value={note} onChange={e => setNote(e.target.value)} /></Field>
+      <Field label="Target tanggal baru" required><DateInput value={due} onChange={e => setDue(e.target.value)} /></Field>
+      <p className="text-[11px] text-slate-500">Tugas tetap milik pemilik awal. Hitungan lewat batas dan eskalasi mulai lagi dari target baru. Tercatat di audit log.</p>
+      <ErrorText>{err}</ErrorText>
+    </Modal>
+  );
+};
+
 const ReassignModal: React.FC<{ task: Task; onClose: () => void }> = ({ task, onClose }) => {
   const { state, actions } = useStore();
   const [userId, setUserId] = useState('');
@@ -107,8 +133,15 @@ const REASON: Record<TaskReason, string | null> = {
 };
 
 export const TaskCard: React.FC<{ task: Task; reason: TaskReason; esc: Escalation }> = ({ task, reason, esc }) => {
-  const { lookups, me } = useStore();
-  const [modal, setModal] = useState<'done' | 'move' | null>(null);
+  const { lookups, me, taskCtx } = useStore();
+  const [modal, setModal] = useState<'done' | 'move' | 'intervene' | null>(null);
+  const escalated = reason === 'eskalasi-kepala' || reason === 'eskalasi-bod';
+  const taskArea = taskCtx.areaOf(task);
+  const scoped = task.assigneeRole === 'Operasional' || task.assigneeRole === 'PIC Area';
+  // Penerima eskalasi yang bukan pelaksana aslinya cukup melihat dokumen lalu turun tangan atau mengalihkan.
+  const canAct = !escalated || (me.roles.includes(task.assigneeRole) && !OWNER_ONLY.includes(task.kind) && (!scoped || !taskArea || me.areaIds.includes(taskArea)));
+  const startFpk = task.kind === 'mulai_jaga' ? lookups.fpk.get(task.refId) : undefined;
+  const notYet = !!startFpk && diffDays(TODAY, latest(startFpk).plannedStart) > 0;
   const daysLeft = diffDays(TODAY, task.dueAt);
   const canMove = task.assigneeRole !== 'BOD' && (reason === 'eskalasi-kepala' || reason === 'eskalasi-bod' || me.headOf.includes(escalationHeadRole(task.assigneeRole)) || me.roles.includes('BOD'));
   const owner = task.assigneeUserId ? lookups.user.get(task.assigneeUserId)?.name : `semua ${task.assigneeRole}`;
@@ -126,6 +159,11 @@ export const TaskCard: React.FC<{ task: Task; reason: TaskReason; esc: Escalatio
           {esc.label && <Badge tone="red"><AlertTriangle className="w-3 h-3" />{esc.label}</Badge>}
         </div>
         <div className="text-sm font-semibold text-slate-900">{task.title}</div>
+        {task.interventions?.map((x, i) => (
+          <div key={i} className="text-xs text-violet-800 bg-violet-50 rounded-md px-2 py-1 mt-1.5">
+            Turun tangan {lookups.user.get(x.by)?.name}: {x.note} · target baru {fmtDate(x.newDue)}
+          </div>
+        ))}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-500">
           <span className={cx('inline-flex items-center gap-1 font-semibold', esc.overdue ? 'text-rose-600' : daysLeft <= 1 ? 'text-amber-600' : 'text-slate-600')}>
             <Clock className="w-3.5 h-3.5" />
@@ -138,13 +176,17 @@ export const TaskCard: React.FC<{ task: Task; reason: TaskReason; esc: Escalatio
       </div>
       <div className="flex flex-wrap gap-1.5 shrink-0 self-start sm:self-center">
         {canMove && <Btn size="sm" variant="ghost" icon={<Shuffle className="w-3.5 h-3.5" />} onClick={() => setModal('move')}>Alihkan</Btn>}
-        {MANUAL_KINDS.includes(task.kind) && <Btn size="sm" variant="success" icon={<CheckSquare className="w-3.5 h-3.5" />} onClick={() => setModal('done')}>Selesaikan</Btn>}
-        <Btn size="sm" variant={MANUAL_KINDS.includes(task.kind) ? 'secondary' : 'primary'} onClick={() => navigate(target)} icon={<ArrowRight className="w-3.5 h-3.5" />}>
-          {ACTION_LABEL[task.kind] ?? 'Buka'}
-        </Btn>
+        {escalated && <Btn size="sm" variant="secondary" icon={<Hand className="w-3.5 h-3.5" />} onClick={() => setModal('intervene')}>Turun tangan</Btn>}
+        {canAct && MANUAL_KINDS.includes(task.kind) && <Btn size="sm" variant="success" icon={<CheckSquare className="w-3.5 h-3.5" />} onClick={() => setModal('done')}>Selesaikan</Btn>}
+        {canAct
+          ? <Btn size="sm" variant={MANUAL_KINDS.includes(task.kind) || notYet ? 'secondary' : 'primary'} onClick={() => navigate(target)} icon={<ArrowRight className="w-3.5 h-3.5" />}>
+            {notYet ? `Mulai ${fmtDate(latest(startFpk!).plannedStart)}` : ACTION_LABEL[task.kind] ?? 'Buka'}
+          </Btn>
+          : <Btn size="sm" variant="secondary" onClick={() => navigate(refLink(task))} icon={<Eye className="w-3.5 h-3.5" />}>Lihat dokumen</Btn>}
       </div>
       {modal === 'done' && <CompleteModal task={task} onClose={() => setModal(null)} />}
       {modal === 'move' && <ReassignModal task={task} onClose={() => setModal(null)} />}
+      {modal === 'intervene' && <InterveneModal task={task} onClose={() => setModal(null)} />}
     </div>
   );
 };

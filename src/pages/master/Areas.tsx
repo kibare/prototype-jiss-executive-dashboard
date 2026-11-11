@@ -142,7 +142,7 @@ export const AreaDetail: React.FC<{ id: string }> = ({ id }) => {
         </Table>
       </Card>
       {access.can('fpk.view') && <FpkMiniTable fpks={running.fpks} />}
-      {access.can('spk.view') && <SpkMiniTable spks={running.spks} title="SPK berjalan" />}
+      {access.can('spk.view') && <SpkMiniTable spks={running.spks} title="SPK aktif dan dalam proses" />}
       {edit && <AreaForm area={a} onClose={() => setEdit(false)} />}
     </div>
   );
