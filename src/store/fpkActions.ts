@@ -22,7 +22,6 @@ export interface FpkInput {
   newClient?: { code: string; name: string; billingAddress: string };
   siteId?: string;
   newSite?: { code: string; name: string; address: string; areaId: string };
-  companyId: string;
   periodStart: string;
   periodEnd: string;
   plannedStart: string;
@@ -114,7 +113,6 @@ const buildVersion = (tx: Tx, input: FpkInput, no: number, clientId: string, sit
   no,
   clientId,
   siteId,
-  companyId: input.companyId,
   periodStart: input.periodStart,
   periodEnd: input.periodEnd,
   plannedStart: input.plannedStart,
@@ -136,7 +134,6 @@ const validateInput = (tx: Tx, input: FpkInput): string | null => {
   if (!input.siteId && !input.newSite) return 'Pilih site atau buat site baru.';
   if (input.newSite && (!input.newSite.code || !input.newSite.name || !input.newSite.address || !input.newSite.areaId)) return 'Site baru: kode, nama, alamat, dan area wajib diisi.';
   if (input.type !== 'baru' && !input.parentFpkId) return 'FPK perubahan/perpanjangan wajib memilih FPK induk.';
-  if (!input.companyId) return 'Pilih PT.';
   if (!input.periodStart || !input.periodEnd || !input.plannedStart) return 'Periode dan tanggal mulai rencana wajib diisi.';
   if (diffDays(input.periodStart, input.periodEnd) <= 0) return 'Periode selesai harus setelah periode mulai.';
   if (!(input.monthlyValue > 0)) return 'Nilai per bulan wajib diisi.';

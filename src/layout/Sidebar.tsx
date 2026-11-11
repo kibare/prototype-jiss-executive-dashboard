@@ -38,7 +38,7 @@ export const Sidebar: React.FC<{ open: boolean; onClose: () => void }> = ({ open
         { to: '/area', label: 'Area', icon: MapPinned, perm: 'master.view' },
         { to: '/klien', label: 'Klien', icon: Building2, perm: 'master.view' },
         { to: '/site', label: 'Site', icon: MapPin, perm: 'master.view' },
-        { to: '/pt-jabatan', label: 'PT & jabatan', icon: Briefcase, perm: 'master.view' },
+        { to: '/jabatan', label: 'Jabatan', icon: Briefcase, perm: 'master.view' },
       ],
     },
     {

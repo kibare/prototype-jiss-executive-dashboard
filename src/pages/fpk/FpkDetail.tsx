@@ -121,7 +121,6 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
             <DL items={[
               ['Klien', <Link to={`/klien/${v.clientId}`} className="text-indigo-700 font-semibold hover:underline">{client?.name}</Link>],
               ['Site', <><Link to={`/site/${v.siteId}`} className="text-indigo-700 font-semibold hover:underline">{lookups.site.get(v.siteId)?.name}</Link> <span className="text-slate-500">· area {lookups.area.get(lookups.site.get(v.siteId)?.areaId ?? '')?.name}</span></>],
-              ['PT', lookups.company.get(v.companyId)?.name],
               ['Periode', `${fmtDate(v.periodStart)} – ${fmtDate(v.periodEnd)}`],
               ['Tanggal mulai rencana', fmtDate(v.plannedStart)],
               ['Mulai jaga', f.startedAt ? fmtDate(f.startedAt) : '–'],

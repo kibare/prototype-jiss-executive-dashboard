@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import type {
-  Area, AuditEntry, Client, Company, Delegation, Fpk, Holiday, Memo, Notification, Personnel, Position,
+  Area, AuditEntry, Client, Delegation, Fpk, Holiday, Memo, Notification, Personnel, Position,
   Setting, Site, SiteAssignment, Spk, Task, User, RefType,
 } from '../domain/types';
 import * as seed from '../domain/seed';
@@ -19,7 +19,6 @@ export interface State {
   areas: Area[];
   clients: Client[];
   sites: Site[];
-  companies: Company[];
   positions: Position[];
   assignments: SiteAssignment[];
   settings: Setting[];
@@ -43,7 +42,6 @@ const initialState = (): State => ({
   areas: seed.SEED_AREAS,
   clients: seed.SEED_CLIENTS,
   sites: seed.SEED_SITES,
-  companies: seed.SEED_COMPANIES,
   positions: seed.SEED_POSITIONS,
   assignments: seed.SEED_ASSIGNMENTS,
   settings: seed.DEFAULT_SETTINGS,
@@ -146,7 +144,6 @@ const useStoreValue = () => {
       area: by(state.areas),
       client: by(state.clients),
       site: by(state.sites),
-      company: by(state.companies),
       position: by(state.positions),
       fpk: by(state.fpks),
       spk: by(state.spks),
@@ -263,15 +260,6 @@ function buildMasterActions(exec: (fn: (tx: Tx) => Result) => Result) {
       const i = tx.s.sites.findIndex(y => y.id === x.id);
       if (i >= 0) tx.s.sites[i] = x; else tx.s.sites.push({ ...x, id: tx.id('s') });
       tx.audit({ entity: 'site', entityId: x.id || 'baru', action: i >= 0 ? 'Ubah site' : 'Buat site', after: `${x.code} ${x.name}${x.active ? '' : ' (nonaktif)'}` });
-      return ok();
-    }),
-
-    saveCompany: (x: Company) => exec(tx => {
-      if (!x.code.trim() || !x.name.trim()) return fail('Kode dan nama wajib diisi.');
-      if (tx.s.companies.some(y => y.id !== x.id && (norm(y.code) === norm(x.code) || norm(y.name) === norm(x.name)))) return fail('Kode atau nama PT sudah dipakai.');
-      const i = tx.s.companies.findIndex(y => y.id === x.id);
-      if (i >= 0) tx.s.companies[i] = x; else tx.s.companies.push({ ...x, id: tx.id('co') });
-      tx.audit({ entity: 'pt', entityId: x.id || 'baru', action: i >= 0 ? 'Ubah PT' : 'Buat PT', after: `${x.code} ${x.name}${x.active ? '' : ' (nonaktif)'}` });
       return ok();
     }),
 

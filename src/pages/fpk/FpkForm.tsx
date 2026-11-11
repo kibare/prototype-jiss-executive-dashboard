@@ -45,7 +45,6 @@ export const FpkFormPage: React.FC<{ fpkId?: string }> = ({ fpkId }) => {
   const [newClient, setNewClient] = useState<null | { code: string; name: string; billingAddress: string }>(null);
   const [siteId, setSiteId] = useState(base?.siteId ?? '');
   const [newSite, setNewSite] = useState<null | { code: string; name: string; address: string; areaId: string }>(null);
-  const [companyId, setCompanyId] = useState(base?.companyId ?? '');
   const [periodStart, setPS] = useState(base?.periodStart ?? '');
   const [periodEnd, setPE] = useState(base?.periodEnd ?? '');
   const [plannedStart, setPlanned] = useState(base?.plannedStart ?? '');
@@ -59,19 +58,19 @@ export const FpkFormPage: React.FC<{ fpkId?: string }> = ({ fpkId }) => {
     type, parentFpkId: parentFpkId || undefined,
     clientId: newClient ? undefined : clientId, newClient: newClient ?? undefined,
     siteId: newSite ? undefined : siteId, newSite: newSite ?? undefined,
-    companyId, periodStart, periodEnd, plannedStart, monthlyValue, lines,
+    periodStart, periodEnd, plannedStart, monthlyValue, lines,
     attachments: [...boq.map(fileName => ({ kind: 'BOQ' as const, fileName })), ...deal.map(fileName => ({ kind: 'Bukti deal' as const, fileName }))],
   };
 
   const plan = useMemo(() => {
     if (mode !== 'versi' || !existing || !base) return null;
     const temp: FpkVersion = {
-      ...base, no: base.no + 1, clientId, siteId: newSite ? 'baru' : siteId, companyId, periodStart, periodEnd, plannedStart, monthlyValue,
+      ...base, no: base.no + 1, clientId, siteId: newSite ? 'baru' : siteId, periodStart, periodEnd, plannedStart, monthlyValue,
       lines: lines.map((l, i) => ({ id: l.id ?? `tmp-${i}`, positionId: l.positionId, qty: l.qty, shift: l.shift, sources: [] })),
       attachments: [...boq, ...deal].map((fileName, i) => ({ id: `t${i}`, kind: 'BOQ', fileName, priced: true, uploadedBy: me.id, uploadedAt: '' })),
     };
     return rereviewPlan(existing, base, temp);
-  }, [mode, existing, base, clientId, siteId, newSite, companyId, periodStart, periodEnd, plannedStart, monthlyValue, lines, boq, deal, me.id]);
+  }, [mode, existing, base, clientId, siteId, newSite, periodStart, periodEnd, plannedStart, monthlyValue, lines, boq, deal, me.id]);
 
   if (fpkId && (!existing || existing.createdBy !== me.id && !myClients.some(c => c.id === base?.clientId))) return <NotFound what="FPK" />;
   if (existing && !['draf', 'dikembalikan'].includes(existing.status)) return <NotFound what="FPK yang bisa diubah" />;
@@ -176,12 +175,6 @@ export const FpkFormPage: React.FC<{ fpkId?: string }> = ({ fpkId }) => {
             </div>
           </div>
           <div className="grid sm:grid-cols-2 gap-3 mt-3">
-            <Field label="PT" required>
-              <Select value={companyId} onChange={e => setCompanyId(e.target.value)}>
-                <option value="">– pilih –</option>
-                {state.companies.filter(c => c.active || c.id === companyId).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </Field>
             <Field label="Nilai per bulan (Rp)" required hint="Field terbatas: tidak terlihat oleh Operasional, Recruitment, Pengadaan, HR, PIC area.">
               <Input type="number" min={0} value={monthlyValue || ''} onChange={e => setValue(Number(e.target.value))} />
             </Field>

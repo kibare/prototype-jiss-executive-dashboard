@@ -15,7 +15,7 @@ export const compareSpkFpk = (
   f: Fpk,
   /** Jumlah orang per baris FPK yang sudah tertutup SPK aktif lain (tanpa SPK ini dan SPK induk bila ini addendum). */
   coveredByOthers: Map<string, number>,
-  names: { company: (id: string) => string; site: (id: string) => string; position: (id: string) => string; date: (d: string) => string; rp: (n: number) => string },
+  names: { site: (id: string) => string; position: (id: string) => string; date: (d: string) => string; rp: (n: number) => string },
 ): FieldDiff[] => {
   const v = latest(f);
   const fpkHead = v.lines.reduce((n, l) => n + l.qty, 0);
@@ -23,7 +23,6 @@ export const compareSpkFpk = (
   // SPK sebagian: nilai yang diharapkan proporsional terhadap jumlah orang yang ditutup.
   const expected = fpkHead ? (v.monthlyValue * spkHead) / fpkHead : v.monthlyValue;
   const rows: FieldDiff[] = [
-    { field: 'PT', spk: names.company(s.companyId), fpk: names.company(v.companyId), same: s.companyId === v.companyId },
     { field: 'Site', spk: names.site(s.siteId), fpk: names.site(v.siteId), same: s.siteId === v.siteId },
     { field: 'Periode mulai', spk: names.date(s.periodStart), fpk: names.date(f.startedAt ?? v.periodStart), same: s.periodStart === (f.startedAt ?? v.periodStart) },
     { field: 'Periode selesai', spk: names.date(s.periodEnd), fpk: names.date(v.periodEnd), same: s.periodEnd === v.periodEnd },
@@ -53,10 +52,9 @@ export const compareSpkParent = (
   s: Spk,
   parent: Spk,
   expected: { periodStart: string; periodEnd: string; value: number } | undefined,
-  names: { company: (id: string) => string; site: (id: string) => string; position: (id: string) => string; date: (d: string) => string; rp: (n: number) => string },
+  names: { site: (id: string) => string; position: (id: string) => string; date: (d: string) => string; rp: (n: number) => string },
 ): FieldDiff[] => {
   const rows: FieldDiff[] = [
-    { field: 'PT', spk: names.company(s.companyId), fpk: names.company(parent.companyId), same: s.companyId === parent.companyId },
     { field: 'Site', spk: names.site(s.siteId), fpk: names.site(parent.siteId), same: s.siteId === parent.siteId },
   ];
   if (expected) {

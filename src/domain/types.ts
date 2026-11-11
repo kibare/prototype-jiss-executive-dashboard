@@ -49,6 +49,8 @@ export interface Client {
   accountOwnerId: string;
   coOwnerIds: string[];
   billingAddress: string;
+  /** Identitas penagihan di invoice (sheet invoice JISS: NAMA PT, NPWP, alamat). Nama PT = nama klien. */
+  npwp?: string;
   termDays: number;
   picContact?: string;
   note?: string;
@@ -63,14 +65,6 @@ export interface Site {
   clientId: string;
   areaId: string;
   note?: string;
-  active: boolean;
-}
-
-export interface Company {
-  id: string;
-  code: string;
-  name: string;
-  address?: string;
   active: boolean;
 }
 
@@ -162,7 +156,6 @@ export interface FpkVersion {
   no: number;
   clientId: string;
   siteId: string;
-  companyId: string;
   periodStart: string;
   periodEnd: string;
   plannedStart: string;
@@ -252,7 +245,6 @@ export interface Spk {
   parentSpkId?: string;
   fpkId?: string;
   clientId: string;
-  companyId: string;
   siteId: string;
   periodStart: string;
   periodEnd: string;

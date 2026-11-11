@@ -1,6 +1,6 @@
 // Data contoh prototipe. SEMUA FIKTIF: nama orang, klien, site, nomor dokumen, dan nilai uang dibuat-buat.
 import type {
-  Area, AuditEntry, Client, Company, Delegation, Fpk, Holiday, Memo, Notification, Personnel,
+  Area, AuditEntry, Client, Delegation, Fpk, Holiday, Memo, Notification, Personnel,
   PersonnelStatus, Position, Site, SiteAssignment, Spk, Task, User, Attachment,
 } from './types';
 import { DEFAULT_SETTINGS } from './settings';
@@ -33,12 +33,6 @@ export const SEED_AREAS: Area[] = [
   { id: 'a-smg', code: 'AR-SMG', name: 'Semarang', note: 'Ditutup sejak 2025', active: false },
 ];
 
-export const SEED_COMPANIES: Company[] = [
-  { id: 'co-sju', code: 'SJU', name: 'PT Satria Jaga Utama', address: 'Jl. Contoh Raya No. 1, Jakarta', active: true },
-  { id: 'co-bgm', code: 'BGM', name: 'PT Bhakti Garda Mandala', address: 'Jl. Contoh Raya No. 2, Bekasi', active: true },
-  { id: 'co-pas', code: 'PAS', name: 'PT Prima Aman Sentosa', active: true },
-];
-
 export const SEED_POSITIONS: Position[] = [
   { id: 'p-sat', code: 'SATPAM', name: 'Anggota Satpam', active: true },
   { id: 'p-dan', code: 'DANRU', name: 'Danru (Komandan Regu)', active: true },
@@ -49,14 +43,14 @@ export const SEED_POSITIONS: Position[] = [
 ];
 
 export const SEED_CLIENTS: Client[] = [
-  { id: 'c-cla', code: 'CLA', name: 'PT Cahaya Logam Abadi', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Industri No. 10, Cikarang', termDays: 30, picContact: 'Bp. Andri (GA)', active: true },
-  { id: 'c-spl', code: 'SPL', name: 'PT Sinar Pangan Lestari', accountOwnerId: 'u-mkt1', coOwnerIds: ['u-wakil'], billingAddress: 'Jl. Fiktif Pangan No. 3, Bekasi', termDays: 30, picContact: 'Ibu Rina (HRGA)', active: true },
-  { id: 'c-gdn', code: 'GDN', name: 'PT Graha Data Nusantara', accountOwnerId: 'u-wakil', coOwnerIds: [], billingAddress: 'Jl. Fiktif Digital No. 8, Jakarta', termDays: 45, active: true },
-  { id: 'c-ktm', code: 'KTM', name: 'PT Kencana Tekstil Mandiri', accountOwnerId: 'u-wakil', coOwnerIds: [], billingAddress: 'Jl. Fiktif Tenun No. 21, Karawang', termDays: 30, active: true },
-  { id: 'c-bkp', code: 'BKP', name: 'PT Bumi Kemas Plastindo', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Kemasan No. 5, Tangerang', termDays: 30, active: true },
-  { id: 'c-arp', code: 'ARP', name: 'PT Arunika Properti', accountOwnerId: 'u-wakil', coOwnerIds: ['u-mkt1'], billingAddress: 'Jl. Fiktif Hunian No. 12, Jakarta', termDays: 30, active: true },
-  { id: 'c-thl', code: 'THL', name: 'PT Tirta Hijau Lestari', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Mata Air No. 7, Bogor', termDays: 30, active: true },
-  { id: 'c-dgp', code: 'DGP', name: 'PT Delta Gudang Prima', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Logistik No. 4, Jakarta', termDays: 30, note: 'Dibuat Marketing dari form FPK', active: true },
+  { id: 'c-cla', code: 'CLA', name: 'PT Cahaya Logam Abadi', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Industri No. 10, Cikarang', npwp: '00.000.000.1-000.000', termDays: 30, picContact: 'Bp. Andri (GA)', active: true },
+  { id: 'c-spl', code: 'SPL', name: 'PT Sinar Pangan Lestari', accountOwnerId: 'u-mkt1', coOwnerIds: ['u-wakil'], billingAddress: 'Jl. Fiktif Pangan No. 3, Bekasi', npwp: '00.000.000.2-000.000', termDays: 30, picContact: 'Ibu Rina (HRGA)', active: true },
+  { id: 'c-gdn', code: 'GDN', name: 'PT Graha Data Nusantara', accountOwnerId: 'u-wakil', coOwnerIds: [], billingAddress: 'Jl. Fiktif Digital No. 8, Jakarta', npwp: '00.000.000.3-000.000', termDays: 45, active: true },
+  { id: 'c-ktm', code: 'KTM', name: 'PT Kencana Tekstil Mandiri', accountOwnerId: 'u-wakil', coOwnerIds: [], billingAddress: 'Jl. Fiktif Tenun No. 21, Karawang', npwp: '00.000.000.4-000.000', termDays: 30, active: true },
+  { id: 'c-bkp', code: 'BKP', name: 'PT Bumi Kemas Plastindo', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Kemasan No. 5, Tangerang', npwp: '00.000.000.5-000.000', termDays: 30, active: true },
+  { id: 'c-arp', code: 'ARP', name: 'PT Arunika Properti', accountOwnerId: 'u-wakil', coOwnerIds: ['u-mkt1'], billingAddress: 'Jl. Fiktif Hunian No. 12, Jakarta', npwp: '00.000.000.6-000.000', termDays: 30, active: true },
+  { id: 'c-thl', code: 'THL', name: 'PT Tirta Hijau Lestari', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Mata Air No. 7, Bogor', npwp: '00.000.000.7-000.000', termDays: 30, active: true },
+  { id: 'c-dgp', code: 'DGP', name: 'PT Delta Gudang Prima', accountOwnerId: 'u-mkt1', coOwnerIds: [], billingAddress: 'Jl. Fiktif Logistik No. 4, Jakarta', npwp: '00.000.000.8-000.000', termDays: 30, note: 'Dibuat Marketing dari form FPK', active: true },
 ];
 
 export const SEED_SITES: Site[] = [
@@ -118,7 +112,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0005', number: 'FPK/2026/0005', type: 'baru', status: 'selesai', pendingDivisions: [],
     createdBy: 'u-wakil', createdAt: '2026-05-12', startedAt: '2026-06-01',
     versions: [{
-      no: 1, clientId: 'c-gdn', siteId: 's-gdn-dc1', companyId: 'co-sju', periodStart: '2026-06-01', periodEnd: '2027-05-31', plannedStart: '2026-06-01',
+      no: 1, clientId: 'c-gdn', siteId: 's-gdn-dc1', periodStart: '2026-06-01', periodEnd: '2027-05-31', plannedStart: '2026-06-01',
       monthlyValue: 92_000_000, estCost: 78_000_000, estMarginPct: 15.2, createdBy: 'u-wakil', createdAt: '2026-05-12',
       lines: [
         { id: 'fl-5a', positionId: 'p-sat', qty: 4, shift: 'Pagi', sources: [{ kind: 'rekrut', qty: 4 }] },
@@ -139,7 +133,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0008', number: 'FPK/2026/0008', type: 'baru', status: 'tertutup_sebagian', pendingDivisions: [],
     createdBy: 'u-mkt1', createdAt: '2026-08-10', startedAt: '2026-09-01',
     versions: [{
-      no: 1, clientId: 'c-spl', siteId: 's-spl-tmb', companyId: 'co-bgm', periodStart: '2026-09-01', periodEnd: '2027-08-31', plannedStart: '2026-09-01',
+      no: 1, clientId: 'c-spl', siteId: 's-spl-tmb', periodStart: '2026-09-01', periodEnd: '2027-08-31', plannedStart: '2026-09-01',
       monthlyValue: 120_000_000, estCost: 101_000_000, estMarginPct: 15.8, createdBy: 'u-mkt1', createdAt: '2026-08-10',
       lines: [
         { id: 'fl-8a', positionId: 'p-sat', qty: 6, shift: 'Pagi', sources: [{ kind: 'rekrut', qty: 6 }] },
@@ -160,7 +154,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0010', number: 'FPK/2026/0010', type: 'baru', status: 'berjalan', pendingDivisions: [],
     createdBy: 'u-mkt1', createdAt: '2026-10-01', startedAt: '2026-10-20',
     versions: [{
-      no: 1, clientId: 'c-cla', siteId: 's-cla-ckr', companyId: 'co-sju', periodStart: '2026-10-20', periodEnd: '2027-10-19', plannedStart: '2026-10-20',
+      no: 1, clientId: 'c-cla', siteId: 's-cla-ckr', periodStart: '2026-10-20', periodEnd: '2027-10-19', plannedStart: '2026-10-20',
       monthlyValue: 165_000_000, estCost: 139_000_000, estMarginPct: 15.8, createdBy: 'u-mkt1', createdAt: '2026-10-01',
       lines: [
         { id: 'fl-10a', positionId: 'p-sat', qty: 5, shift: 'Pagi', sources: [{ kind: 'rekrut', qty: 5 }] },
@@ -181,7 +175,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0009', number: 'FPK/2026/0009', type: 'baru', status: 'disetujui', pendingDivisions: [],
     createdBy: 'u-wakil', createdAt: '2026-10-28',
     versions: [{
-      no: 1, clientId: 'c-arp', siteId: 's-arp-kby', companyId: 'co-pas', periodStart: '2026-11-16', periodEnd: '2027-11-15', plannedStart: '2026-11-16',
+      no: 1, clientId: 'c-arp', siteId: 's-arp-kby', periodStart: '2026-11-16', periodEnd: '2027-11-15', plannedStart: '2026-11-16',
       monthlyValue: 78_000_000, estCost: 66_500_000, estMarginPct: 14.7, createdBy: 'u-wakil', createdAt: '2026-10-28',
       lines: [
         { id: 'fl-9a', positionId: 'p-sat', qty: 6, shift: 'Non-shift', sources: [{ kind: 'rekrut', qty: 4 }, { kind: 'mutasi', qty: 2, fromAreaId: 'a-tgr', fromSiteId: 's-arp-cdn' }] },
@@ -201,7 +195,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0007', number: 'FPK/2026/0007', type: 'baru', status: 'disetujui', pendingDivisions: [], handedToHr: true, registered: true,
     createdBy: 'u-mkt1', createdAt: '2026-11-03',
     versions: [{
-      no: 1, clientId: 'c-spl', siteId: 's-spl-pgd', companyId: 'co-bgm', periodStart: '2026-11-12', periodEnd: '2027-11-11', plannedStart: '2026-11-12',
+      no: 1, clientId: 'c-spl', siteId: 's-spl-pgd', periodStart: '2026-11-12', periodEnd: '2027-11-11', plannedStart: '2026-11-12',
       monthlyValue: 39_000_000, estCost: 33_200_000, estMarginPct: 14.9, createdBy: 'u-mkt1', createdAt: '2026-11-03',
       lines: [{ id: 'fl-7a', positionId: 'p-sat', qty: 3, shift: 'Non-shift', sources: [{ kind: 'standby', qty: 3 }] }],
       attachments: [att('at-7a', 'BOQ', 'BOQ_SPL_Pulogadung.pdf', 'u-mkt1', '2026-11-03'), att('at-7b', 'Bukti deal', 'Email_SPL_Pulogadung.pdf', 'u-mkt1', '2026-11-03')],
@@ -219,7 +213,7 @@ export const SEED_FPKS: Fpk[] = [
     createdBy: 'u-wakil', createdAt: '2026-11-02',
     notFeasible: { by: 'u-rec', division: 'Recruitment', reason: 'Rekrut 12 orang dalam 2 minggu sulit tercapai; butuh minimal 4 minggu.' },
     versions: [{
-      no: 1, clientId: 'c-ktm', siteId: 's-ktm-krb', companyId: 'co-bgm', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
+      no: 1, clientId: 'c-ktm', siteId: 's-ktm-krb', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
       monthlyValue: 140_000_000, estCost: 128_100_000, estMarginPct: 8.5, createdBy: 'u-wakil', createdAt: '2026-11-02',
       lines: [
         { id: 'fl-12a', positionId: 'p-sat', qty: 6, shift: 'Pagi', sources: [{ kind: 'rekrut', qty: 6 }] },
@@ -239,7 +233,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0013', number: 'FPK/2026/0013', type: 'baru', status: 'cek_divisi', pendingDivisions: ['Recruitment', 'Pengadaan'], needsFinance: true,
     createdBy: 'u-mkt1', createdAt: '2026-11-11',
     versions: [{
-      no: 1, clientId: 'c-bkp', siteId: 's-bkp-blj', companyId: 'co-sju', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
+      no: 1, clientId: 'c-bkp', siteId: 's-bkp-blj', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
       monthlyValue: 64_000_000, createdBy: 'u-mkt1', createdAt: '2026-11-11',
       lines: [
         { id: 'fl-13a', positionId: 'p-sat', qty: 4, shift: 'Pagi', sources: [] },
@@ -256,13 +250,13 @@ export const SEED_FPKS: Fpk[] = [
     createdBy: 'u-mkt1', createdAt: '2026-11-03',
     versions: [
       {
-        no: 1, clientId: 'c-cla', siteId: 's-cla-kwg', companyId: 'co-sju', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
+        no: 1, clientId: 'c-cla', siteId: 's-cla-kwg', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
         monthlyValue: 52_000_000, createdBy: 'u-mkt1', createdAt: '2026-11-03',
         lines: [{ id: 'fl-6a', positionId: 'p-sat', qty: 4, shift: 'Pagi', sources: [{ kind: 'rekrut', qty: 4 }] }],
         attachments: [att('at-6a', 'BOQ', 'BOQ_CLA_Karawang_v1.pdf', 'u-mkt1', '2026-11-03'), att('at-6b', 'Bukti deal', 'Email_CLA_Karawang.pdf', 'u-mkt1', '2026-11-03')],
       },
       {
-        no: 2, clientId: 'c-cla', siteId: 's-cla-kwg', companyId: 'co-sju', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
+        no: 2, clientId: 'c-cla', siteId: 's-cla-kwg', periodStart: '2026-12-01', periodEnd: '2027-11-30', plannedStart: '2026-12-01',
         monthlyValue: 68_000_000, createdBy: 'u-mkt1', createdAt: '2026-11-05',
         lines: [
           { id: 'fl-6b', positionId: 'p-sat', qty: 4, shift: 'Pagi', sources: [{ kind: 'rekrut', qty: 4 }] },
@@ -285,7 +279,7 @@ export const SEED_FPKS: Fpk[] = [
     createdBy: 'u-mkt1', createdAt: '2026-11-06',
     returned: { by: 'u-ops1', reason: 'Area pabrik luas, patroli malam perlu minimal 2 orang.', at: '2026-11-10 14:00', fromDivision: 'Operasional' },
     versions: [{
-      no: 1, clientId: 'c-thl', siteId: 's-thl-caw', companyId: 'co-pas', periodStart: '2027-01-01', periodEnd: '2027-12-31', plannedStart: '2027-01-01',
+      no: 1, clientId: 'c-thl', siteId: 's-thl-caw', periodStart: '2027-01-01', periodEnd: '2027-12-31', plannedStart: '2027-01-01',
       monthlyValue: 58_000_000, createdBy: 'u-mkt1', createdAt: '2026-11-06',
       lines: [
         { id: 'fl-11a', positionId: 'p-sat', qty: 4, shift: 'Pagi', sources: [] },
@@ -302,7 +296,7 @@ export const SEED_FPKS: Fpk[] = [
     id: 'f-0014', number: 'FPK/2026/0014', type: 'baru', status: 'draf', pendingDivisions: [],
     createdBy: 'u-mkt1', createdAt: '2026-11-12',
     versions: [{
-      no: 1, clientId: 'c-dgp', siteId: 's-dgp-ckg', companyId: 'co-sju', periodStart: '2027-01-01', periodEnd: '2027-12-31', plannedStart: '2027-01-02',
+      no: 1, clientId: 'c-dgp', siteId: 's-dgp-ckg', periodStart: '2027-01-01', periodEnd: '2027-12-31', plannedStart: '2027-01-02',
       monthlyValue: 45_000_000, createdBy: 'u-mkt1', createdAt: '2026-11-12',
       lines: [{ id: 'fl-14a', positionId: 'p-sat', qty: 3, shift: 'Non-shift', sources: [] }],
       attachments: [att('at-14a', 'BOQ', 'BOQ_DGP_Cakung.pdf', 'u-mkt1', '2026-11-12')],
@@ -314,7 +308,7 @@ export const SEED_FPKS: Fpk[] = [
 // ---------- SPK ----------
 export const SEED_SPKS: Spk[] = [
   {
-    id: 'sp-1', number: 'SPK/GDN/2026/014', type: 'baru', fpkId: 'f-0005', clientId: 'c-gdn', companyId: 'co-sju', siteId: 's-gdn-dc1',
+    id: 'sp-1', number: 'SPK/GDN/2026/014', type: 'baru', fpkId: 'f-0005', clientId: 'c-gdn', siteId: 's-gdn-dc1',
     periodStart: '2026-06-01', periodEnd: '2027-05-31', monthlyValue: 92_000_000, status: 'aktif', verdict: 'cocok',
     lines: [
       { id: 'sl-1a', positionId: 'p-sat', qty: 4, shift: 'Pagi', fpkLineId: 'fl-5a' },
@@ -325,7 +319,7 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-wakil', inputAt: '2026-06-10', verifiedBy: 'u-fin1', verifiedAt: '2026-06-11',
   },
   {
-    id: 'sp-2', number: 'SPK/SPL/2026/022', type: 'baru', fpkId: 'f-0008', clientId: 'c-spl', companyId: 'co-bgm', siteId: 's-spl-tmb',
+    id: 'sp-2', number: 'SPK/SPL/2026/022', type: 'baru', fpkId: 'f-0008', clientId: 'c-spl', siteId: 's-spl-tmb',
     periodStart: '2026-09-01', periodEnd: '2027-08-31', monthlyValue: 70_000_000, status: 'aktif', verdict: 'cocok',
     lines: [
       { id: 'sl-2a', positionId: 'p-sat', qty: 6, shift: 'Pagi', fpkLineId: 'fl-8a' },
@@ -335,7 +329,7 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-mkt1', inputAt: '2026-09-20', verifiedBy: 'u-fin2', verifiedAt: '2026-09-21',
   },
   {
-    id: 'sp-6', number: 'SPK/SPL/2026/027', type: 'baru', fpkId: 'f-0008', clientId: 'c-spl', companyId: 'co-bgm', siteId: 's-spl-tmb',
+    id: 'sp-6', number: 'SPK/SPL/2026/027', type: 'baru', fpkId: 'f-0008', clientId: 'c-spl', siteId: 's-spl-tmb',
     periodStart: '2026-09-01', periodEnd: '2027-08-31', monthlyValue: 38_000_000, status: 'perlu_revisi', verdict: 'salah', invoiceHeld: true,
     revisionReason: 'Nilai per bulan di SPK Rp 38 juta, seharusnya Rp 50 juta sesuai BOQ.',
     lines: [{ id: 'sl-6a', positionId: 'p-sat', qty: 6, shift: 'Malam', fpkLineId: 'fl-8b' }],
@@ -343,7 +337,7 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-mkt1', inputAt: '2026-10-29', verifiedBy: 'u-fin2', verifiedAt: '2026-10-30',
   },
   {
-    id: 'sp-3', number: 'SPK/CLA/2026/031', type: 'baru', fpkId: 'f-0010', clientId: 'c-cla', companyId: 'co-sju', siteId: 's-cla-ckr',
+    id: 'sp-3', number: 'SPK/CLA/2026/031', type: 'baru', fpkId: 'f-0010', clientId: 'c-cla', siteId: 's-cla-ckr',
     periodStart: '2026-11-01', periodEnd: '2027-10-19', monthlyValue: 160_000_000, status: 'diinput',
     lines: [
       { id: 'sl-3a', positionId: 'p-sat', qty: 5, shift: 'Pagi', fpkLineId: 'fl-10a' },
@@ -354,7 +348,7 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-mkt1', inputAt: '2026-11-11',
   },
   {
-    id: 'sp-4', number: 'SPK/KTM/2025/007', type: 'baru', clientId: 'c-ktm', companyId: 'co-bgm', siteId: 's-ktm-krb',
+    id: 'sp-4', number: 'SPK/KTM/2025/007', type: 'baru', clientId: 'c-ktm', siteId: 's-ktm-krb',
     periodStart: '2025-01-16', periodEnd: '2027-01-15', monthlyValue: 112_000_000, status: 'aktif', isInitialData: true,
     lines: [
       { id: 'sl-4a', positionId: 'p-sat', qty: 10, shift: 'Non-shift' },
@@ -364,7 +358,7 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-admin', inputAt: '2026-11-02',
   },
   {
-    id: 'sp-5', number: 'SPK/ARP/2026/003', type: 'baru', clientId: 'c-arp', companyId: 'co-pas', siteId: 's-arp-cdn',
+    id: 'sp-5', number: 'SPK/ARP/2026/003', type: 'baru', clientId: 'c-arp', siteId: 's-arp-cdn',
     periodStart: '2026-03-01', periodEnd: '2027-02-28', monthlyValue: 70_000_000, status: 'aktif', isInitialData: true,
     lines: [
       { id: 'sl-5a', positionId: 'p-sat', qty: 8, shift: 'Non-shift' },
@@ -374,7 +368,7 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-admin', inputAt: '2026-11-02',
   },
   {
-    id: 'sp-7', number: 'SPK/CLA/2026/004', type: 'baru', clientId: 'c-cla', companyId: 'co-sju', siteId: 's-cla-hq',
+    id: 'sp-7', number: 'SPK/CLA/2026/004', type: 'baru', clientId: 'c-cla', siteId: 's-cla-hq',
     periodStart: '2026-02-01', periodEnd: '2027-01-31', monthlyValue: 46_000_000, status: 'aktif', isInitialData: true,
     lines: [
       { id: 'sl-7a', positionId: 'p-sat', qty: 4, shift: 'Non-shift' },
@@ -384,14 +378,14 @@ export const SEED_SPKS: Spk[] = [
     inputBy: 'u-admin', inputAt: '2026-11-02',
   },
   {
-    id: 'sp-8', number: 'SPK/GDN/2026/001', type: 'baru', clientId: 'c-gdn', companyId: 'co-sju', siteId: 's-gdn-hq',
+    id: 'sp-8', number: 'SPK/GDN/2026/001', type: 'baru', clientId: 'c-gdn', siteId: 's-gdn-hq',
     periodStart: '2026-01-01', periodEnd: '2026-12-31', monthlyValue: 55_000_000, status: 'aktif', isInitialData: true,
     lines: [{ id: 'sl-8a', positionId: 'p-sat', qty: 6, shift: 'Non-shift' }],
     pdf: att('at-s8', 'PDF SPK', 'SPK_GDN_2026_001.pdf', 'u-admin', '2026-11-02'),
     inputBy: 'u-admin', inputAt: '2026-11-02',
   },
   {
-    id: 'sp-9', number: 'SPK/SPL/2026/009', type: 'baru', clientId: 'c-spl', companyId: 'co-bgm', siteId: 's-spl-ctr',
+    id: 'sp-9', number: 'SPK/SPL/2026/009', type: 'baru', clientId: 'c-spl', siteId: 's-spl-ctr',
     periodStart: '2026-04-01', periodEnd: '2027-03-31', monthlyValue: 60_000_000, status: 'aktif', isInitialData: true,
     lines: [
       { id: 'sl-9a', positionId: 'p-sat', qty: 6, shift: 'Non-shift' },

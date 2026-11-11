@@ -25,7 +25,7 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
   const isOwner = !!client && (client.accountOwnerId === me.id || client.coOwnerIds.includes(me.id));
   const seeMoney = access.money(s.clientId);
   const names = {
-    company: (x: string) => lookups.company.get(x)?.name ?? '–', site: (x: string) => lookups.site.get(x)?.name ?? '–', position: (x: string) => lookups.position.get(x)?.name ?? '–',
+    site: (x: string) => lookups.site.get(x)?.name ?? '–', position: (x: string) => lookups.position.get(x)?.name ?? '–',
     date: fmtDate, rp: fmtRp,
   };
   const parentForCompare = s.parentSpkId && (s.type === 'perpanjangan' || !f) ? lookups.spk.get(s.parentSpkId) : undefined;
@@ -155,7 +155,7 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
             <DL items={[
               ['Klien', <Link to={`/klien/${s.clientId}`} className="text-indigo-700 font-semibold hover:underline">{client?.name}</Link>],
               ['Site', <Link to={`/site/${s.siteId}`} className="text-indigo-700 font-semibold hover:underline">{site.name}</Link>],
-              ['PT', lookups.company.get(s.companyId)?.name],
+              ['Ditagihkan ke', <span>{client?.name}{client?.npwp ? <span className="text-slate-500"> · NPWP {client.npwp}</span> : null}</span>],
               ['Periode', `${fmtDate(s.periodStart)} – ${fmtDate(s.periodEnd)}`],
               ...(s.effectiveDate ? [['Berlaku addendum', fmtDate(s.effectiveDate)] as [string, string]] : []),
               ['Nilai per bulan', <Money value={s.monthlyValue} clientId={s.clientId} className="font-semibold" />],

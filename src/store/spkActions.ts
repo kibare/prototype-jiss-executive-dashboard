@@ -13,7 +13,6 @@ export interface SpkInput {
   type: SpkType;
   parentSpkId?: string;
   fpkId?: string;
-  companyId: string;
   siteId: string;
   periodStart: string;
   periodEnd: string;
@@ -62,7 +61,7 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     const client = tx.s.clients.find(c => c.id === clientId);
     if (!client || !(client.accountOwnerId === tx.me.id || client.coOwnerIds.includes(tx.me.id))) return fail('Hanya Marketing pemegang klien.');
     if (!input.number.trim()) return fail('Nomor SPK wajib diisi.');
-    if (!input.companyId || !input.siteId) return fail('PT dan site wajib diisi.');
+    if (!input.siteId) return fail('Site wajib diisi.');
     if (!input.periodStart || !input.periodEnd || diffDays(input.periodStart, input.periodEnd) <= 0) return fail('Periode SPK tidak valid.');
     if (input.type === 'addendum' && (!input.parentSpkId || !input.effectiveDate)) return fail('Addendum wajib memilih SPK induk dan tanggal berlaku.');
     if (input.type === 'perpanjangan' && !input.parentSpkId) return fail('Perpanjangan wajib memilih SPK induk.');
@@ -77,7 +76,7 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (tx.s.spks.some(x => x.id !== reviseId && x.clientId === clientId && x.number.trim().toLowerCase() === input.number.trim().toLowerCase())) return fail('Nomor SPK sudah dipakai untuk klien ini.');
 
     const base = {
-      number: input.number.trim(), type: input.type, parentSpkId: input.parentSpkId, fpkId: f?.id, clientId, companyId: input.companyId,
+      number: input.number.trim(), type: input.type, parentSpkId: input.parentSpkId, fpkId: f?.id, clientId,
       siteId: input.siteId, periodStart: input.periodStart, periodEnd: input.periodEnd, effectiveDate: input.effectiveDate, monthlyValue: input.monthlyValue,
       lines: lines.map(l => ({ id: tx.id('sl'), ...l })),
       pdf: { id: tx.id('at'), kind: 'PDF SPK' as const, fileName: input.pdfName, priced: true, uploadedBy: tx.me.id, uploadedAt: NOW },
@@ -165,7 +164,7 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
         type: 'perubahan', parentFpkId: f.id, status: 'selesai', pendingDivisions: [], createdBy: tx.me.id, createdAt: TODAY, startedAt: f.startedAt,
         reviews: [],
         versions: [{
-          ...v, no: 1, companyId: s.companyId, siteId: s.siteId, periodStart: s.periodStart, periodEnd: s.periodEnd, monthlyValue: s.monthlyValue,
+          ...v, no: 1, siteId: s.siteId, periodStart: s.periodStart, periodEnd: s.periodEnd, monthlyValue: s.monthlyValue,
           lines: s.lines.map(l => ({ id: tx.id('fl'), positionId: l.positionId, qty: l.qty, shift: l.shift, sources: v.lines.find(x => x.id === l.fpkLineId)?.sources ?? [] })),
           estMarginPct: v.estCost ? Math.round(((s.monthlyValue - v.estCost) / s.monthlyValue) * 1000) / 10 : undefined,
           createdBy: tx.me.id, createdAt: NOW,

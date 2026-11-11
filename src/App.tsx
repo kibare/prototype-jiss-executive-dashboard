@@ -11,7 +11,7 @@ import { DecisionsPage } from './pages/tasks/DecisionsPage';
 import { AreasPage, AreaDetail } from './pages/master/Areas';
 import { ClientsPage, ClientDetail } from './pages/master/Clients';
 import { SitesPage, SiteDetail } from './pages/master/Sites';
-import { CompaniesPositionsPage } from './pages/master/CompaniesPositions';
+import { PositionsPage } from './pages/master/Positions';
 import { UsersPage } from './pages/admin/Users';
 import { AssignmentsPage } from './pages/admin/Assignments';
 import { SettingsPage } from './pages/admin/Settings';
@@ -50,7 +50,7 @@ const ROUTES: Route[] = [
   { path: '/klien/:id', perm: 'master.view', render: p => <ClientDetail id={p.id} /> },
   { path: '/site', perm: 'master.view', render: () => <SitesPage /> },
   { path: '/site/:id', perm: 'master.view', render: p => <SiteDetail id={p.id} /> },
-  { path: '/pt-jabatan', perm: 'master.view', render: () => <CompaniesPositionsPage /> },
+  { path: '/jabatan', perm: 'master.view', render: () => <PositionsPage /> },
   { path: '/security', perm: 'security.view', render: () => <SecurityPage /> },
   { path: '/security/:id', perm: 'security.view', render: p => <SecurityDetail id={p.id} /> },
   { path: '/admin/pengguna', perm: 'admin.view', render: () => <UsersPage /> },

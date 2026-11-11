@@ -9,7 +9,6 @@ export interface VersionDiff {
   lines: boolean;
   site: boolean;
   value: boolean;
-  company: boolean;
   period: boolean;
   startEarlier: boolean;
   startLater: boolean;
@@ -22,7 +21,6 @@ export const diffVersions = (a: FpkVersion, b: FpkVersion): VersionDiff => ({
   lines: linesKey(a) !== linesKey(b),
   site: a.siteId !== b.siteId,
   value: a.monthlyValue !== b.monthlyValue,
-  company: a.companyId !== b.companyId,
   period: a.periodStart !== b.periodStart || a.periodEnd !== b.periodEnd,
   startEarlier: diffDays(a.plannedStart, b.plannedStart) < 0,
   startLater: diffDays(a.plannedStart, b.plannedStart) > 0,
@@ -33,7 +31,6 @@ export const DIFF_LABEL: Record<keyof VersionDiff, string> = {
   lines: 'Jumlah, jabatan, atau shift',
   site: 'Site',
   value: 'Nilai',
-  company: 'PT',
   period: 'Periode',
   startEarlier: 'Tanggal mulai dimajukan',
   startLater: 'Tanggal mulai dimundurkan',
@@ -63,9 +60,9 @@ export const rereviewPlan = (f: Fpk, prev: FpkVersion, next: FpkVersion): Review
     finance = true;
     reasons.push(`${d.lines ? DIFF_LABEL.lines : DIFF_LABEL.site} berubah → Ops, Recruitment, Pengadaan, lalu Finance`);
   }
-  if (d.value || d.company || d.period) {
+  if (d.value || d.period) {
     finance = true;
-    reasons.push(`${[d.value && 'Nilai', d.company && 'PT', d.period && 'Periode'].filter(Boolean).join(', ')} berubah → Finance`);
+    reasons.push(`${[d.value && 'Nilai', d.period && 'Periode'].filter(Boolean).join(', ')} berubah → Finance`);
   }
   if (d.startEarlier) {
     CHECK_DIVISIONS.forEach(x => divs.add(x));
@@ -80,7 +77,7 @@ export const rereviewPlan = (f: Fpk, prev: FpkVersion, next: FpkVersion): Review
   });
   if (!completed(f, 'Finance', prev.no) && (f.returned?.fromDivision === 'Finance' || divs.size > 0)) finance = true;
 
-  const nothingMaterial = !d.lines && !d.site && !d.value && !d.company && !d.period && !d.startEarlier;
+  const nothingMaterial = !d.lines && !d.site && !d.value && !d.period && !d.startEarlier;
   if (nothingMaterial && divs.size === 0 && !finance) {
     const from = f.returned?.fromDivision;
     if (from && from !== 'BOD') {

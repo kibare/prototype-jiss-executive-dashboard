@@ -24,7 +24,6 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
   const [type, setType] = useState<SpkType>(old?.type ?? (qsParent ? 'perpanjangan' : 'baru'));
   const [parentSpkId, setParent] = useState(old?.parentSpkId ?? qsParent);
   const [effectiveDate, setEff] = useState(old?.effectiveDate ?? '');
-  const [companyId, setCompanyId] = useState(old?.companyId ?? '');
   const [siteId, setSiteId] = useState(old?.siteId ?? '');
   const [periodStart, setPS] = useState(old?.periodStart ?? '');
   const [periodEnd, setPE] = useState(old?.periodEnd ?? '');
@@ -46,7 +45,7 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
   const parents = state.spks.filter(s => (s.status === 'aktif' || (type === 'perpanjangan' && s.status === 'berakhir')) && (clientId ? s.clientId === clientId : myClient(s.clientId)));
 
   const submit = () => {
-    const r = actions.inputSpk({ number, type, parentSpkId: parentSpkId || undefined, fpkId: noFpkRenewal ? undefined : fpkId, companyId, siteId, periodStart, periodEnd, effectiveDate: effectiveDate || undefined, monthlyValue, lines, pdfName: pdf }, reviseId);
+    const r = actions.inputSpk({ number, type, parentSpkId: parentSpkId || undefined, fpkId: noFpkRenewal ? undefined : fpkId, siteId, periodStart, periodEnd, effectiveDate: effectiveDate || undefined, monthlyValue, lines, pdfName: pdf }, reviseId);
     if (!r.ok) return setErr(r.error);
     toast('SPK diinput, menunggu verifikasi Finance');
     navigate(`/spk/${r.id}`);
@@ -86,12 +85,6 @@ export const SpkFormPage: React.FC<{ reviseId?: string }> = ({ reviseId }) => {
               </Field>
             )}
             {type === 'addendum' && <Field label="Tanggal berlaku addendum" required hint="Addendum menyimpan komposisi lengkap setelah perubahan, bukan selisih."><Input type="date" value={effectiveDate} onChange={e => setEff(e.target.value)} /></Field>}
-            <Field label="PT" required>
-              <Select value={companyId} onChange={e => setCompanyId(e.target.value)}>
-                <option value="">– pilih –</option>
-                {state.companies.filter(c => c.active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </Select>
-            </Field>
             <Field label="Site" required>
               <Select value={siteId} onChange={e => setSiteId(e.target.value)} disabled={!clientId}>
                 <option value="">– pilih –</option>

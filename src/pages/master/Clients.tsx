@@ -42,7 +42,8 @@ export const ClientForm: React.FC<{ client: Client | null; onClose: () => void }
           ))}
         </div>
       </Field>
-      <Field label="Alamat penagihan" required><Textarea value={f.billingAddress} onChange={e => setF({ ...f, billingAddress: e.target.value })} /></Field>
+      <Field label="Alamat penagihan" required hint="Nama klien di atas dipakai sebagai nama PT di invoice."><Textarea value={f.billingAddress} onChange={e => setF({ ...f, billingAddress: e.target.value })} /></Field>
+      <Field label="NPWP klien" hint="Untuk invoice dan faktur pajak. Boleh diisi belakangan."><Input value={f.npwp ?? ''} onChange={e => setF({ ...f, npwp: e.target.value || undefined })} placeholder="00.000.000.0-000.000" /></Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Termin bayar (hari kalender)" required><Input type="number" value={f.termDays} onChange={e => setF({ ...f, termDays: Number(e.target.value) })} /></Field>
         <Field label="Kontak PIC klien"><Input value={f.picContact ?? ''} onChange={e => setF({ ...f, picContact: e.target.value })} /></Field>
@@ -143,6 +144,7 @@ export const ClientDetail: React.FC<{ id: string }> = ({ id }) => {
           ['Co-owner', c.coOwnerIds.map(x => lookups.user.get(x)?.name).join(', ') || '–'],
           ['Termin bayar', `${c.termDays} hari kalender`],
           ['Alamat penagihan', c.billingAddress],
+          ['NPWP', c.npwp ?? '–'],
           ['Kontak PIC klien', c.picContact ?? '–'],
           ['Status', <ActiveBadge active={c.active} />],
         ]} />
