@@ -1,212 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import { AppProvider, useApp } from './context/AppContext';
-import { ContractProvider } from './context/ContractContext';
-import { Sidebar } from './components/layout/Sidebar';
-import { Header } from './components/layout/Header';
-import { DashboardView } from './components/dashboard/DashboardView';
-import { ProjectsView } from './components/projects/ProjectsView';
-import { ProjectDetailView } from './components/projects/ProjectDetailView';
-import { ClientsView } from './components/clients/ClientsView';
-import { FPKView } from './components/fpk/FPKView';
-import { ContractsView } from './components/contracts/ContractsView';
-import { DeploymentMonitoringView } from './components/deployment/DeploymentMonitoringView';
-import { PersonnelView } from './components/personnel/PersonnelView';
-import { TasksApprovalsView } from './components/tasks/TasksApprovalsView';
-import { RolesUsersView } from './components/admin/RolesUsersView';
-import { AlertCircle, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { StoreProvider, useStore } from './store/store';
+import { match, navigate, usePath } from './router';
+import { Sidebar } from './layout/Sidebar';
+import { Topbar, homeFor } from './layout/Topbar';
+import { Toaster } from './ui/kit';
+import type { Perm } from './domain/rbac';
+import { NoAccess, NotFound, Soon } from './pages/Misc';
+import { TasksPage } from './pages/tasks/TasksPage';
+import { DecisionsPage } from './pages/tasks/DecisionsPage';
+import { AreasPage, AreaDetail } from './pages/master/Areas';
+import { ClientsPage, ClientDetail } from './pages/master/Clients';
+import { SitesPage, SiteDetail } from './pages/master/Sites';
+import { PositionsPage } from './pages/master/Positions';
+import { UsersPage } from './pages/admin/Users';
+import { AssignmentsPage } from './pages/admin/Assignments';
+import { SettingsPage } from './pages/admin/Settings';
+import { DelegationPage } from './pages/admin/Delegation';
+import { AuditPage } from './pages/admin/Audit';
+import { FpkListPage } from './pages/fpk/FpkList';
+import { FpkDetailPage } from './pages/fpk/FpkDetail';
+import { FpkFormPage } from './pages/fpk/FpkForm';
+import { SpkListPage } from './pages/spk/SpkList';
+import { SpkDetailPage } from './pages/spk/SpkDetail';
+import { SpkFormPage } from './pages/spk/SpkForm';
+import { WithoutSpkPage } from './pages/spk/WithoutSpk';
+import { SecurityPage, SecurityDetail } from './pages/people/Security';
+import { MemoListPage, MemoNewPage, MemoDetailPage } from './pages/memo/Memo';
 
-// Global Confirmation Dialog (P1: Dialog konfirmasi aksi penting)
-const GlobalConfirmationDialog: React.FC = () => {
-  const { confirmDialog, closeConfirmation } = useApp();
-  const [notes, setNotes] = useState('');
-  const [error, setError] = useState('');
+type Route = { path: string; perm: Perm; render: (p: Record<string, string>) => React.ReactNode };
+
+const ROUTES: Route[] = [
+  { path: '/tugas', perm: 'tasks.view', render: () => <TasksPage /> },
+  { path: '/keputusan', perm: 'decisions.view', render: () => <DecisionsPage /> },
+  { path: '/fpk', perm: 'fpk.view', render: () => <FpkListPage /> },
+  { path: '/fpk/baru', perm: 'fpk.create', render: () => <FpkFormPage /> },
+  { path: '/fpk/:id/ubah', perm: 'fpk.create', render: p => <FpkFormPage fpkId={p.id} /> },
+  { path: '/fpk/:id', perm: 'fpk.view', render: p => <FpkDetailPage id={p.id} /> },
+  { path: '/spk', perm: 'spk.view', render: () => <SpkListPage /> },
+  { path: '/spk/input', perm: 'spk.input', render: () => <SpkFormPage /> },
+  { path: '/spk/:id/revisi', perm: 'spk.input', render: p => <SpkFormPage reviseId={p.id} /> },
+  { path: '/spk/:id', perm: 'spk.view', render: p => <SpkDetailPage id={p.id} /> },
+  { path: '/jalan-tanpa-spk', perm: 'spk.view', render: () => <WithoutSpkPage /> },
+  { path: '/memo', perm: 'memo.view', render: () => <MemoListPage /> },
+  { path: '/memo/baru', perm: 'spk.input', render: () => <MemoNewPage /> },
+  { path: '/memo/:id', perm: 'memo.view', render: p => <MemoDetailPage id={p.id} /> },
+  { path: '/area', perm: 'master.view', render: () => <AreasPage /> },
+  { path: '/area/:id', perm: 'master.view', render: p => <AreaDetail id={p.id} /> },
+  { path: '/klien', perm: 'master.view', render: () => <ClientsPage /> },
+  { path: '/klien/:id', perm: 'master.view', render: p => <ClientDetail id={p.id} /> },
+  { path: '/site', perm: 'master.view', render: () => <SitesPage /> },
+  { path: '/site/:id', perm: 'master.view', render: p => <SiteDetail id={p.id} /> },
+  { path: '/jabatan', perm: 'master.view', render: () => <PositionsPage /> },
+  { path: '/security', perm: 'security.view', render: () => <SecurityPage /> },
+  { path: '/security/:id', perm: 'security.view', render: p => <SecurityDetail id={p.id} /> },
+  { path: '/admin/pengguna', perm: 'admin.view', render: () => <UsersPage /> },
+  { path: '/admin/divisi-terkait', perm: 'master.view', render: () => <AssignmentsPage /> },
+  { path: '/admin/pengaturan', perm: 'admin.view', render: () => <SettingsPage /> },
+  { path: '/admin/delegasi', perm: 'delegation.edit', render: () => <DelegationPage /> },
+  { path: '/audit', perm: 'audit.view', render: () => <AuditPage /> },
+  { path: '/dashboard', perm: 'dashboard.view', render: () => <Soon title="Dashboard eksekutif" note="Di luar PRD Rilis 1. Dashboard Direksi lengkap dibuat di rilis berikutnya." /> },
+];
+
+const Router: React.FC = () => {
+  const path = usePath();
+  const { me, access } = useStore();
 
   useEffect(() => {
-    setNotes('');
-    setError('');
-  }, [confirmDialog]);
+    if (path === '/' || path === '/dashboard-lama') navigate(homeFor(me.roles));
+  }, [path, me.roles]);
 
-  if (!confirmDialog) return null;
-
-  const handleConfirm = () => {
-    if (confirmDialog.requiresNotes && !notes.trim()) {
-      setError('Catatan wajib diisi sebelum melanjutkan.');
-      return;
-    }
-    confirmDialog.onConfirm(notes.trim());
-    closeConfirmation();
-  };
-
-  const variant = confirmDialog.variant || 'primary';
-
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'danger':
-        return {
-          icon: <AlertCircle className="w-6 h-6 text-rose-600" />,
-          iconBg: 'bg-rose-50 border-rose-200',
-          btnBg: 'bg-rose-600 hover:bg-rose-700 text-white',
-        };
-      case 'warning':
-        return {
-          icon: <AlertTriangle className="w-6 h-6 text-amber-600" />,
-          iconBg: 'bg-amber-50 border-amber-200',
-          btnBg: 'bg-amber-600 hover:bg-amber-700 text-white',
-        };
-      case 'success':
-        return {
-          icon: <CheckCircle2 className="w-6 h-6 text-emerald-600" />,
-          iconBg: 'bg-emerald-50 border-emerald-200',
-          btnBg: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-        };
-      default:
-        return {
-          icon: <Info className="w-6 h-6 text-indigo-600" />,
-          iconBg: 'bg-indigo-50 border-indigo-200',
-          btnBg: 'bg-indigo-600 hover:bg-indigo-700 text-white',
-        };
-    }
-  };
-
-  const styles = getVariantStyles();
-
-  return (
-    <div 
-      className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="confirm-dialog-title"
-    >
-      <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl p-6 space-y-4 animate-in zoom-in-95">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 ${styles.iconBg}`}>
-              {styles.icon}
-            </div>
-            <div>
-              <h3 id="confirm-dialog-title" className="text-base font-bold text-slate-900">
-                {confirmDialog.title}
-              </h3>
-              <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                {confirmDialog.message}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={closeConfirmation}
-            className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
-            aria-label="Tutup dialog konfirmasi"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {confirmDialog.requiresNotes && (
-          <div className="space-y-1.5 pt-1">
-            <label className="block text-xs font-semibold text-slate-700">
-              {confirmDialog.notesLabel || 'Catatan / Alasan (Wajib diisi):'}
-            </label>
-            <textarea
-              value={notes}
-              onChange={(e) => {
-                setNotes(e.target.value);
-                if (error) setError('');
-              }}
-              placeholder={confirmDialog.notesPlaceholder || 'Tuliskan rincian pertimbangan atau alasan keputusan...'}
-              rows={3}
-              className={`w-full px-3 py-2 text-xs border rounded-lg focus:outline-hidden focus:ring-2 ${
-                error ? 'border-rose-400 focus:ring-rose-200' : 'border-slate-300 focus:ring-indigo-200'
-              }`}
-            />
-            {error && <p className="text-[11px] text-rose-600 font-medium">{error}</p>}
-          </div>
-        )}
-
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={closeConfirmation}
-            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
-          >
-            {confirmDialog.cancelLabel || 'Batal'}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors shadow-xs ${styles.btnBg}`}
-          >
-            {confirmDialog.confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  for (const r of ROUTES) {
+    const params = match(r.path, path);
+    if (params) return access.can(r.perm) ? <>{r.render(params)}</> : <NoAccess />;
+  }
+  if (path === '/') return null;
+  return <NotFound />;
 };
 
-const MainLayout: React.FC = () => {
-  const { activeView } = useApp();
-
-  const renderCurrentView = () => {
-    switch (activeView) {
-      case 'dashboard':
-        return <DashboardView />;
-      case 'clients':
-        return <ClientsView />;
-      case 'projects':
-        return <ProjectsView />;
-      case 'project-detail':
-        return <ProjectDetailView />;
-      case 'fpk':
-        return <FPKView />;
-      case 'kontrak':
-      case 'spk':
-      case 'memos':
-        return <ContractsView />;
-      case 'deployment':
-      case 'sites':
-        return <DeploymentMonitoringView />;
-      case 'personnel':
-        return <PersonnelView />;
-      case 'tasks':
-        return <TasksApprovalsView />;
-      case 'users':
-        return <RolesUsersView initialTab="users" />;
-      case 'audit':
-        return <RolesUsersView initialTab="audit" />;
-      default:
-        return <DashboardView />;
-    }
-  };
-
+const Shell: React.FC = () => {
+  const [menu, setMenu] = useState(false);
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-slate-900 selection:text-white">
-      {/* Dark Sidebar */}
-      <Sidebar />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
-        <main className={`flex-1 min-w-0 ${
-          ['kontrak', 'spk', 'memos'].includes(activeView)
-            ? 'overflow-hidden flex flex-col'
-            : 'overflow-y-auto pb-12'
-        }`}>
-          {renderCurrentView()}
+    <div className="flex min-h-screen bg-slate-50 text-slate-900">
+      <Sidebar open={menu} onClose={() => setMenu(false)} />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <Topbar onMenu={() => setMenu(true)} />
+        <main className="flex-1 min-w-0 px-4 sm:px-6 py-6 max-w-7xl w-full mx-auto">
+          <Router />
         </main>
       </div>
-
-      {/* Global Confirmation Dialog */}
-      <GlobalConfirmationDialog />
+      <Toaster />
     </div>
   );
 };
 
 export default function App() {
   return (
-    <AppProvider>
-      <ContractProvider>
-        <MainLayout />
-      </ContractProvider>
-    </AppProvider>
+    <StoreProvider>
+      <Shell />
+    </StoreProvider>
   );
 }
