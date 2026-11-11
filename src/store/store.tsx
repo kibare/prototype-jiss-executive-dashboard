@@ -9,6 +9,8 @@ import { can as canPerm, canSeeArea, canSeeMoney, canOpenAttachment, isBodLike, 
 import { taskReason, escalationOf, type TaskCtx } from '../domain/tasks';
 import { buildFpkActions } from './fpkActions';
 import { buildSpkActions } from './spkActions';
+import { buildMemoActions } from './memoActions';
+import { buildTaskActions } from './taskActions';
 
 export interface State {
   users: User[];
@@ -94,6 +96,25 @@ const makeTx = (s: State): Tx => {
   };
 };
 
+/** Konteks mesin tugas dari state (dipakai tampilan dan aksi). */
+export const makeTaskCtx = (st: State): TaskCtx => {
+  const siteOf = (t: Task) => {
+    if (t.refType === 'fpk') return st.fpks.find(f => f.id === t.refId)?.versions.at(-1)?.siteId;
+    if (t.refType === 'spk') return st.spks.find(x => x.id === t.refId)?.siteId;
+    if (t.refType === 'memo') { const m = st.memos.find(x => x.id === t.refId); return st.spks.find(x => x.id === m?.spkId)?.siteId; }
+    return undefined;
+  };
+  return {
+    delegations: st.delegations,
+    settings: st.settings,
+    holidays: st.holidays,
+    creatorOf: t => (t.refType === 'fpk' ? st.fpks.find(f => f.id === t.refId)?.createdBy
+      : t.refType === 'spk' ? st.spks.find(x => x.id === t.refId)?.inputBy
+      : t.refType === 'memo' ? st.memos.find(x => x.id === t.refId)?.createdBy : undefined),
+    areaOf: t => { const sid = siteOf(t); return sid ? st.sites.find(x => x.id === sid)?.areaId : undefined; },
+  };
+};
+
 const useStoreValue = () => {
   const [state, setState] = useState<State>(initialState);
   const stateRef = React.useRef(state);
@@ -124,19 +145,11 @@ const useStoreValue = () => {
       fpk: by(state.fpks),
       spk: by(state.spks),
       personnel: by(state.personnel),
+      memo: by(state.memos),
     };
   }, [state]);
 
-  const taskCtx: TaskCtx = useMemo(() => ({
-    delegations: state.delegations,
-    settings: state.settings,
-    holidays: state.holidays,
-    creatorOf: t => (t.refType === 'fpk' ? lookups.fpk.get(t.refId)?.createdBy : t.refType === 'spk' ? lookups.spk.get(t.refId)?.inputBy : undefined),
-    areaOf: t => {
-      const siteId = t.refType === 'fpk' ? lookups.fpk.get(t.refId)?.versions.at(-1)?.siteId : t.refType === 'spk' ? lookups.spk.get(t.refId)?.siteId : undefined;
-      return siteId ? lookups.site.get(siteId)?.areaId : undefined;
-    },
-  }), [state, lookups]);
+  const taskCtx: TaskCtx = useMemo(() => makeTaskCtx(state), [state]);
 
   const access = useMemo(() => ({
     can: (p: Perm) => canPerm(me, p, state.delegations),
@@ -168,6 +181,8 @@ const useStoreValue = () => {
     ...buildMasterActions(exec),
     ...buildFpkActions(exec),
     ...buildSpkActions(exec),
+    ...buildMemoActions(exec),
+    ...buildTaskActions(exec, () => makeTaskCtx(stateRef.current)),
   }), [exec]);
 
   return { state, me, lookups, access, myTasks, myNotifications, taskCtx, actions };

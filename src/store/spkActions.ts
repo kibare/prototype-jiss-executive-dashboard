@@ -12,7 +12,7 @@ export interface SpkInput {
   number: string;
   type: SpkType;
   parentSpkId?: string;
-  fpkId: string;
+  fpkId?: string;
   companyId: string;
   siteId: string;
   periodStart: string;
@@ -46,9 +46,13 @@ const financeVerifier = (tx: Tx, s: Spk) => {
 export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
   const inputSpk = (input: SpkInput, reviseId?: string) => exec(tx => {
     if (!has(tx.me, 'Marketing')) return fail('Hanya Marketing yang menginput SPK.');
-    const f = tx.s.fpks.find(x => x.id === input.fpkId);
-    if (!f) return fail('Pilih FPK induk.');
-    const v = latest(f);
+    const f = input.fpkId ? tx.s.fpks.find(x => x.id === input.fpkId) : undefined;
+    const parent = input.parentSpkId ? tx.s.spks.find(x => x.id === input.parentSpkId) : undefined;
+    // Perpanjangan SPK data awal tidak punya FPK induk: klien diambil dari SPK induk.
+    if (!f && !(input.type === 'perpanjangan' && parent)) return fail('Pilih FPK induk (atau SPK induk untuk perpanjangan SPK data awal).');
+    const clientId = f ? latest(f).clientId : parent!.clientId;
+    const client = tx.s.clients.find(c => c.id === clientId);
+    if (!client || !(client.accountOwnerId === tx.me.id || client.coOwnerIds.includes(tx.me.id))) return fail('Hanya Marketing pemegang klien.');
     if (!input.number.trim()) return fail('Nomor SPK wajib diisi.');
     if (!input.companyId || !input.siteId) return fail('PT dan site wajib diisi.');
     if (!input.periodStart || !input.periodEnd || diffDays(input.periodStart, input.periodEnd) <= 0) return fail('Periode SPK tidak valid.');
@@ -56,12 +60,12 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (input.type === 'perpanjangan' && !input.parentSpkId) return fail('Perpanjangan wajib memilih SPK induk.');
     if (!(input.monthlyValue > 0)) return fail('Nilai per bulan wajib diisi.');
     if (!input.lines.length || input.lines.some(l => !l.positionId || !(l.qty > 0))) return fail('Isi baris jabatan dengan jumlah lebih dari 0.');
-    if (input.lines.some(l => !l.fpkLineId)) return fail('Setiap baris SPK harus menunjuk baris FPK yang ditutup.');
+    if (f && input.lines.some(l => !l.fpkLineId)) return fail('Setiap baris SPK harus menunjuk baris FPK yang ditutup.');
     if (!input.pdfName) return fail('Lampirkan PDF SPK.');
-    if (tx.s.spks.some(x => x.id !== reviseId && x.clientId === v.clientId && x.number.trim().toLowerCase() === input.number.trim().toLowerCase())) return fail('Nomor SPK sudah dipakai untuk klien ini.');
+    if (tx.s.spks.some(x => x.id !== reviseId && x.clientId === clientId && x.number.trim().toLowerCase() === input.number.trim().toLowerCase())) return fail('Nomor SPK sudah dipakai untuk klien ini.');
 
     const base = {
-      number: input.number.trim(), type: input.type, parentSpkId: input.parentSpkId, fpkId: f.id, clientId: v.clientId, companyId: input.companyId,
+      number: input.number.trim(), type: input.type, parentSpkId: input.parentSpkId, fpkId: f?.id, clientId, companyId: input.companyId,
       siteId: input.siteId, periodStart: input.periodStart, periodEnd: input.periodEnd, effectiveDate: input.effectiveDate, monthlyValue: input.monthlyValue,
       lines: input.lines.map(l => ({ id: tx.id('sl'), ...l })),
       pdf: { id: tx.id('at'), kind: 'PDF SPK' as const, fileName: input.pdfName, priced: true, uploadedBy: tx.me.id, uploadedAt: NOW },
@@ -80,6 +84,7 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
       tx.s.spks.unshift(s);
       tx.audit({ entity: 'spk', entityId: s.id, action: 'SPK diinput', after: s.number });
     }
+    if (input.type === 'perpanjangan' && input.parentSpkId) tx.closeTasks(t => t.refId === input.parentSpkId && t.kind === 'input_spk_perpanjangan');
     tx.addTask({
       kind: 'verifikasi_spk', title: `Verifikasi ${s.number} — ${tx.s.clients.find(c => c.id === s.clientId)?.name}`, refType: 'spk', refId: s.id,
       assigneeRole: 'Finance', assigneeUserId: financeVerifier(tx, s), division: 'Finance',

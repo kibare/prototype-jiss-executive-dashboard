@@ -267,8 +267,13 @@ export type MemoStatus = 'draf' | 'cek_margin' | 'menunggu_bod' | 'disetujui' | 
 export interface MemoVersion {
   no: number;
   newValue: number; // terbatas
+  periodStart: string;
+  periodEnd: string;
+  boq?: Attachment;
+  estCost?: number; // terbatas
   marginPct?: number;
-  bodDecision?: string;
+  bodDecision?: { decision: 'setujui' | 'kembalikan'; by: string; onBehalfOf?: string; note?: string; at: string };
+  createdBy: string;
   createdAt: string;
 }
 
@@ -277,11 +282,19 @@ export interface Memo {
   spkId: string;
   parentMemoId?: string;
   type: MemoType;
+  /** Nomor keluar saat disetujui BOD. */
   number?: string;
   status: MemoStatus;
   versions: MemoVersion[];
+  draftPdf?: Attachment;
+  signedPdf?: Attachment;
+  proof?: Attachment;
   sentAt?: string;
   clientAnswer?: 'setuju' | 'nego' | 'tidak_lanjut';
+  answerNote?: string;
+  answeredAt?: string;
+  createdBy: string;
+  createdAt: string;
 }
 
 // ---------- People in Act ----------
@@ -335,6 +348,11 @@ export type TaskKind =
   | 'margin_spk'
   | 'memo'
   | 'setujui_memo'
+  | 'cek_margin_memo'
+  | 'kirim_memo'
+  | 'catat_jawaban'
+  | 'input_spk_perpanjangan'
+  | 'info_invoice_akhir'
   | 'cari_pengganti'
   | 'demobilisasi';
 

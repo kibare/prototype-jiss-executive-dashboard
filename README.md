@@ -32,7 +32,8 @@ Ganti user simulasi lewat tombol nama di kanan atas. Menu, aksi, dan field uang 
 | Agus Setiono | PIC Area (Jakarta) | Konfirmasi mulai jaga FPK 0007 dari HP |
 | Nanda Putri | Pengadaan | Cek FPK 0013 |
 | Wulan Sari / Teguh Santoso | Finance | Cek margin FPK 0006, verifikasi SPK/CLA/2026/031 (ada field beda) |
-| Hartono Wibisono | BOD | Menunggu keputusan saya: FPK 0012 (margin rendah + tidak layak), eskalasi |
+| Hartono Wibisono | BOD | Menunggu keputusan saya: FPK 0012 (margin rendah + tidak layak), persetujuan memo, eskalasi; alihkan tugas |
+| Yudha Pratama (memo) | Marketing | Memo H-75 untuk SPK/KTM/2025/007 (data awal), catat jawaban klien MEMO/2026/0021, input SPK perpanjangan |
 | Kevin Halim | Admin sistem | Master data, user & peran, divisi terkait, pengaturan & libur, audit log (nilai uang disamarkan) |
 
 ## Struktur
@@ -46,6 +47,7 @@ src/ui/       komponen tampilan
 
 ## Belum ada di prototipe
 
-- Memo eksternal (H-75 → cek margin → BOD → kirim → jawaban klien)
-- Import Excel, login/undangan sungguhan, email dan ringkasan pagi
+- Import Excel (prioritas rendah di PRD)
+- Login, undangan, reset sandi, dan kunci akun sungguhan (diganti tombol ganti user simulasi)
+- Email notifikasi dan ringkasan pagi (notifikasi di aplikasi sudah ada)
 - Dashboard eksekutif (di luar PRD Rilis 1)

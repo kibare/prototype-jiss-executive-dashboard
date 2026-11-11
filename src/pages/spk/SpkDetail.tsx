@@ -6,7 +6,9 @@ import { ReasonModal } from '../../ui/ReasonModal';
 import { Link, navigate } from '../../router';
 import { NotFound } from '../Misc';
 import { SPK_STATUS, SPK_TYPE } from '../../domain/labels';
-import { compareSpkFpk } from '../../domain/spk';
+import { compareSpkFpk, compareSpkParent } from '../../domain/spk';
+import { MEMO_STATUS, MEMO_TYPE } from '../../domain/labels';
+import { settingNum } from '../../domain/settings';
 import { fpkCoverage, spkHeadcount } from '../../domain/selectors';
 import { TODAY, diffDays, fmtDate, fmtRp } from '../../domain/time';
 import { has } from '../../domain/rbac';
@@ -21,10 +23,19 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
   const client = lookups.client.get(s.clientId);
   const isOwner = !!client && (client.accountOwnerId === me.id || client.coOwnerIds.includes(me.id));
   const seeMoney = access.money(s.clientId);
-  const diffs = f ? compareSpkFpk(s, f, {
-    company: x => lookups.company.get(x)?.name ?? '–', site: x => lookups.site.get(x)?.name ?? '–', position: x => lookups.position.get(x)?.name ?? '–',
+  const names = {
+    company: (x: string) => lookups.company.get(x)?.name ?? '–', site: (x: string) => lookups.site.get(x)?.name ?? '–', position: (x: string) => lookups.position.get(x)?.name ?? '–',
     date: fmtDate, rp: fmtRp,
-  }) : [];
+  };
+  const parentForCompare = !f && s.parentSpkId ? lookups.spk.get(s.parentSpkId) : undefined;
+  const agreedMemo = parentForCompare ? state.memos.find(m => m.spkId === parentForCompare.id && m.clientAnswer === 'setuju') : undefined;
+  const memoV = agreedMemo?.versions[agreedMemo.versions.length - 1];
+  const diffs = f ? compareSpkFpk(s, f, names)
+    : parentForCompare ? compareSpkParent(s, parentForCompare, memoV ? { periodStart: memoV.periodStart, periodEnd: memoV.periodEnd, value: memoV.newValue } : undefined, names) : [];
+  const memos = state.memos.filter(m => m.spkId === s.id);
+  const openMemo = memos.find(m => m.status !== 'dijawab');
+  const daysLeft = diffDays(TODAY, s.periodEnd);
+  const memoWindow = daysLeft <= settingNum(state.settings, 'memo.start_days_before_end', 75);
   const hasDiff = diffs.some(d => !d.same);
   const canVerify = s.status === 'diinput' && has(me, 'Finance');
   const selfInput = s.inputBy === me.id;
@@ -46,6 +57,7 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
         actions={<>
           {s.status === 'perlu_revisi' && isOwner && has(me, 'Marketing') && <Btn size="sm" icon={<FileEdit className="w-3.5 h-3.5" />} onClick={() => navigate(`/spk/${s.id}/revisi`)}>Input revisi SPK</Btn>}
           {s.status === 'perlu_revisi' && s.invoiceHeld && has(me, 'BOD') && <Btn size="sm" variant="secondary" onClick={() => setModal('tagih')}>Tagih sesuai SPK dulu</Btn>}
+          {s.status === 'aktif' && isOwner && has(me, 'Marketing') && !openMemo && memoWindow && <Btn size="sm" onClick={() => navigate(`/memo/baru?spk=${s.id}`)}>Buat memo (H-{daysLeft})</Btn>}
         </>}
       />
 
@@ -65,7 +77,7 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
             <p className="text-sm text-rose-700">Anda ikut menginput SPK ini; verifikasi harus oleh user Finance lain.</p>
           ) : (
             <>
-              <p className="text-sm text-slate-600 mb-3">{hasDiff ? 'Ada field yang beda dari FPK (ditandai merah di tabel perbandingan). Pilih apakah SPK-nya salah atau justru benar.' : 'Semua field sesuai FPK.'}</p>
+              <p className="text-sm text-slate-600 mb-3">{hasDiff ? `Ada field yang beda dari ${f ? 'FPK' : 'acuan'} (ditandai merah di tabel perbandingan). Pilih apakah SPK-nya salah atau justru benar.` : `Semua field sesuai ${f ? 'FPK' : 'SPK induk dan memo yang disetujui'}.`}</p>
               <div className="flex flex-wrap gap-2">
                 <Btn variant="success" disabled={hasDiff} icon={<CheckCircle2 className="w-4 h-4" />} onClick={() => { const r = actions.verifySpk(s.id, 'cocok', '', hasDiff); if (r.ok) toast('SPK aktif'); else toast(r.error, 'err'); }}>Cocok, aktifkan</Btn>
                 {hasDiff && <>
@@ -80,9 +92,9 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 space-y-5 min-w-0">
-          {f && (
-            <Card title="Perbandingan dengan FPK" pad={false}>
-              <Table head={['Field', 'SPK', 'FPK', '']}>
+          {diffs.length > 0 && (
+            <Card title={f ? 'Perbandingan dengan FPK' : `Perbandingan dengan SPK induk ${parentForCompare?.number}${memoV ? ' dan memo yang disetujui klien' : ''}`} pad={false}>
+              <Table head={['Field', 'SPK', f ? 'FPK' : 'Acuan', '']}>
                 {diffs.map((d, i) => (
                   <tr key={i} className={cx(!d.same && 'bg-rose-50/60')}>
                     <Td className="font-medium text-xs">{d.field}</Td>
@@ -131,7 +143,19 @@ export const SpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
               ...(f?.startedAt && s.status === 'aktif' && s.verifiedAt ? [['KPI menunggu SPK', `${diffDays(f.startedAt, s.verifiedAt)} hari sejak mulai jaga`] as [string, string]] : []),
             ]} />
           </Card>
-          <Card title="Lampiran"><AttachmentChip a={s.pdf} clientId={s.clientId} /></Card>
+          <Card title="Lampiran"><AttachmentChip a={s.pdf} clientId={s.clientId} entity="spk" entityId={s.id} /></Card>
+          {access.can('memo.view') && (
+            <Card title={`Memo eksternal (${memos.length})`}>
+              <div className="space-y-2">
+                {memos.map(m => (
+                  <Link key={m.id} to={`/memo/${m.id}`} className="block text-sm hover:underline">
+                    <span className="font-semibold text-indigo-700">{m.number ?? 'Draf memo'}</span> · {MEMO_TYPE[m.type]} <Badge tone={MEMO_STATUS[m.status].tone} className="ml-1">{MEMO_STATUS[m.status].label}</Badge>
+                  </Link>
+                ))}
+                {memos.length === 0 && <p className="text-xs text-slate-500">{s.status === 'aktif' ? (memoWindow ? 'Sudah masuk H-75, memo belum dibuat.' : `Tugas memo muncul di H-75 (${fmtDate(new Date(Date.parse(s.periodEnd) - 75 * 864e5).toISOString().slice(0, 10))}).`) : 'Tidak ada.'}</p>}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
 

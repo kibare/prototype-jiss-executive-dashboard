@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Btn, ErrorText, Field, Select as Sel, Textarea, toast } from '../../ui/kit';
+import { has } from '../../domain/rbac';
 import { useStore } from '../../store/store';
 import { Badge, Card, DL, PageHeader, SearchBox, Select, Table, Td, ExportBtn, exportCsv } from '../../ui/kit';
 import { Link } from '../../router';
@@ -65,8 +67,35 @@ export const SecurityPage: React.FC = () => {
   );
 };
 
+const StatusChanger: React.FC<{ personnelId: string; current: PersonnelStatus }> = ({ personnelId, current }) => {
+  const { actions } = useStore();
+  const opts: Record<PersonnelStatus, PersonnelStatus[]> = {
+    calon: ['keluar'], terdaftar: ['standby', 'keluar'], standby: ['nonaktif_sementara', 'keluar'],
+    aktif: ['nonaktif_sementara', 'standby', 'keluar'], nonaktif_sementara: ['aktif', 'standby', 'keluar'], dalam_mutasi: [], keluar: [],
+  };
+  const [to, setTo] = useState<PersonnelStatus | ''>('');
+  const [reason, setReason] = useState('');
+  const [err, setErr] = useState('');
+  if (!opts[current].length) return <p className="text-xs text-slate-500">{current === 'dalam_mutasi' ? 'Personel sedang dalam mutasi dan dikunci.' : 'Status akhir.'}</p>;
+  return (
+    <div className="space-y-3">
+      <Field label="Ubah status ke" required>
+        <Sel value={to} onChange={e => setTo(e.target.value as PersonnelStatus)}>
+          <option value="">– pilih –</option>
+          {opts[current].map(k => <option key={k} value={k}>{PERSONNEL_STATUS[k].label}</option>)}
+        </Sel>
+      </Field>
+      <Field label="Alasan" required hint="Contoh: cuti melahirkan, skorsing 7 hari, mengundurkan diri."><Textarea value={reason} onChange={e => setReason(e.target.value)} /></Field>
+      <ErrorText>{err}</ErrorText>
+      <div className="flex justify-end">
+        <Btn size="sm" disabled={!to} onClick={() => { const r = actions.setPersonnelStatus(personnelId, to as PersonnelStatus, reason); if (r.ok) { toast('Status diubah'); setTo(''); setReason(''); setErr(''); } else setErr(r.error); }}>Simpan</Btn>
+      </div>
+    </div>
+  );
+};
+
 export const SecurityDetail: React.FC<{ id: string }> = ({ id }) => {
-  const { lookups, access } = useStore();
+  const { lookups, access, me } = useStore();
   const p = lookups.personnel.get(id);
   const pl = p ? currentPlacement(p) : undefined;
   if (!p || (pl && !access.area(pl.areaId))) return <NotFound what="Security" />;
@@ -84,6 +113,7 @@ export const SecurityDetail: React.FC<{ id: string }> = ({ id }) => {
         ]} />
         <p className="text-[11px] text-slate-500 mt-3">Identitas lengkap (KTP, rekening, BPJS) tidak disimpan di sistem ini.</p>
       </Card>
+      {has(me, 'HR') && <Card title="Ubah status (HR)"><StatusChanger personnelId={p.id} current={p.status} /></Card>}
       <Card title="Riwayat penempatan" pad={false}>
         <Table head={['Area', 'Site', 'FPK / SPK', 'Mulai', 'Selesai']}>
           {[...p.placements].reverse().map((x, i) => (

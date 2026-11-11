@@ -17,7 +17,7 @@ const useOutside = (ref: React.RefObject<HTMLElement | null>, on: () => void) =>
 export const homeFor = (roles: string[]) => (roles.includes('Admin sistem') ? '/area' : '/tugas');
 
 const NOTIF_LINK = (refType?: string, refId?: string) =>
-  refType === 'fpk' ? `/fpk/${refId}` : refType === 'spk' ? `/spk/${refId}` : refType === 'client' ? `/klien/${refId}` : undefined;
+  refType === 'fpk' ? `/fpk/${refId}` : refType === 'spk' ? `/spk/${refId}` : refType === 'memo' ? `/memo/${refId}` : refType === 'client' ? `/klien/${refId}` : undefined;
 
 export const Topbar: React.FC<{ onMenu: () => void }> = ({ onMenu }) => {
   const { state, me, actions, myNotifications } = useStore();

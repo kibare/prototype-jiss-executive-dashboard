@@ -116,6 +116,12 @@ export const FpkPeople: React.FC<{ f: Fpk }> = ({ f }) => {
                 </div>
               </div>
             )}
+            {f.mutation?.cancelled && has(me, 'HR') && state.tasks.some(t => t.refId === f.id && t.status === 'terbuka' && t.title.startsWith('Mutasi dibatalkan')) && (
+              <div className="flex flex-wrap gap-2">
+                <Btn size="sm" onClick={() => run(actions.restoreMutation(f.id, 'kembali'), 'Personel kembali ke penempatan asal')}>Kembalikan ke penempatan asal</Btn>
+                <Btn size="sm" variant="secondary" onClick={() => run(actions.restoreMutation(f.id, 'standby'), 'Personel dijadikan standby')}>Jadikan standby</Btn>
+              </div>
+            )}
             {f.mutation && !f.mutation.placed && !f.mutation.cancelled && (
               <div className="flex flex-wrap gap-2">
                 {has(me, 'HR') && <Btn size="sm" onClick={() => run(actions.placeMutation(f.id), 'Penempatan diubah')}>Ubah penempatan</Btn>}

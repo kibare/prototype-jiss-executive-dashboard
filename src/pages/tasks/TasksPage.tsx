@@ -1,4 +1,7 @@
 import React, { useState } from 'react';
+import { CheckSquare, Shuffle } from 'lucide-react';
+import { Field, Modal, Select, Textarea, ErrorText, toast } from '../../ui/kit';
+import { MANUAL_KINDS } from '../../store/taskActions';
 import { AlertTriangle, ArrowRight, Clock, CornerDownRight, UserCheck } from 'lucide-react';
 import { useStore } from '../../store/store';
 import { Badge, Btn, Card, Empty, PageHeader, Tabs, cx } from '../../ui/kit';
@@ -8,7 +11,7 @@ import type { Task } from '../../domain/types';
 import { navigate } from '../../router';
 
 export const refLink = (t: Task) =>
-  t.refType === 'fpk' ? `/fpk/${t.refId}` : t.refType === 'spk' ? `/spk/${t.refId}` : t.refType === 'personnel' ? `/security/${t.refId}` : t.refType === 'site' ? `/site/${t.refId}` : '/tugas';
+  t.refType === 'fpk' ? `/fpk/${t.refId}` : t.refType === 'spk' ? `/spk/${t.refId}` : t.refType === 'memo' ? `/memo/${t.refId}` : t.refType === 'personnel' ? `/security/${t.refId}` : t.refType === 'site' ? `/site/${t.refId}` : '/tugas';
 
 const ACTION_LABEL: Partial<Record<Task['kind'], string>> = {
   cek_fpk: 'Cek FPK',
@@ -24,8 +27,74 @@ const ACTION_LABEL: Partial<Record<Task['kind'], string>> = {
   verifikasi_spk: 'Verifikasi',
   urus_spk_salah: 'Input revisi SPK',
   kejar_spk: 'Input SPK',
-  penyesuaian_fpk: 'Tinjau',
-  margin_spk: 'Putuskan',
+  margin_spk: 'Buka SPK',
+  memo: 'Pilih jenis memo',
+  kirim_memo: 'Kirim memo',
+  catat_jawaban: 'Catat jawaban',
+  setujui_memo: 'Putuskan',
+  cek_margin_memo: 'Cek margin',
+  input_spk_perpanjangan: 'Input SPK perpanjangan',
+  penyesuaian_fpk: 'Buka FPK',
+  cari_pengganti: 'Buka',
+  demobilisasi: 'Buka',
+};
+
+/** Tutup tugas manual langsung dari kartu (satu klik + catatan bila wajib). */
+const CompleteModal: React.FC<{ task: Task; onClose: () => void }> = ({ task, onClose }) => {
+  const { actions } = useStore();
+  const [note, setNote] = useState('');
+  const [choice, setChoice] = useState<'terima' | 'nego' | ''>('');
+  const [err, setErr] = useState('');
+  const hint: Partial<Record<Task['kind'], string>> = {
+    penyesuaian_fpk: 'Konfirmasi divisi Anda sudah menyesuaikan persiapan dengan FPK perubahan (isi SPK yang jadi acuan).',
+    cari_pengganti: 'Tulis siapa penggantinya atau rencana pemenuhannya.',
+    demobilisasi: task.assigneeRole === 'HR' ? 'Penempatan personel di site ini diakhiri dan personel kembali berstatus standby.' : 'Konfirmasi personel sudah ditarik dari site.',
+    margin_spk: 'Margin SPK di bawah minimum. Terima, atau minta Marketing nego ulang lewat addendum.',
+  };
+  const go = () => {
+    const r = actions.completeTask(task.id, note, choice || undefined);
+    if (!r.ok) return setErr(r.error);
+    toast('Tugas selesai');
+    onClose();
+  };
+  return (
+    <Modal open title={task.title} onClose={onClose} footer={<><Btn variant="secondary" onClick={onClose}>Batal</Btn><Btn onClick={go}>Selesaikan</Btn></>}>
+      <p className="text-sm text-slate-600">{hint[task.kind]}</p>
+      {task.kind === 'margin_spk' && (
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm"><input type="radio" checked={choice === 'terima'} onChange={() => setChoice('terima')} /> Terima margin ini</label>
+          <label className="flex items-center gap-2 text-sm"><input type="radio" checked={choice === 'nego'} onChange={() => setChoice('nego')} /> Nego ulang lewat addendum</label>
+        </div>
+      )}
+      <Field label="Catatan" required={task.kind === 'cari_pengganti' || task.kind === 'demobilisasi'}><Textarea value={note} onChange={e => setNote(e.target.value)} /></Field>
+      <ErrorText>{err}</ErrorText>
+    </Modal>
+  );
+};
+
+const ReassignModal: React.FC<{ task: Task; onClose: () => void }> = ({ task, onClose }) => {
+  const { state, actions } = useStore();
+  const [userId, setUserId] = useState('');
+  const [err, setErr] = useState('');
+  const go = () => {
+    const r = actions.reassignTask(task.id, userId);
+    if (!r.ok) return setErr(r.error);
+    toast('Tugas dialihkan');
+    onClose();
+  };
+  return (
+    <Modal open title="Alihkan tugas" onClose={onClose} footer={<><Btn variant="secondary" onClick={onClose}>Batal</Btn><Btn onClick={go} disabled={!userId}>Alihkan</Btn></>}>
+      <p className="text-sm text-slate-600">{task.title}</p>
+      <Field label={`Alihkan ke (${task.assigneeRole})`} required>
+        <Select value={userId} onChange={e => setUserId(e.target.value)}>
+          <option value="">– pilih –</option>
+          {state.users.filter(u => u.active && u.roles.includes(task.assigneeRole) && u.id !== task.assigneeUserId).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </Select>
+      </Field>
+      <p className="text-[11px] text-slate-500">Eskalasi tidak memindahkan tugas; mengalihkan berarti mengganti pemiliknya dan tercatat di audit log.</p>
+      <ErrorText>{err}</ErrorText>
+    </Modal>
+  );
 };
 
 const REASON: Record<TaskReason, string | null> = {
@@ -37,11 +106,15 @@ const REASON: Record<TaskReason, string | null> = {
 };
 
 export const TaskCard: React.FC<{ task: Task; reason: TaskReason; esc: Escalation }> = ({ task, reason, esc }) => {
-  const { lookups } = useStore();
+  const { lookups, me } = useStore();
+  const [modal, setModal] = useState<'done' | 'move' | null>(null);
   const daysLeft = diffDays(TODAY, task.dueAt);
+  const canMove = task.assigneeRole !== 'BOD' && (reason === 'eskalasi-kepala' || reason === 'eskalasi-bod' || me.headOf.includes(task.assigneeRole) || me.roles.includes('BOD'));
   const owner = task.assigneeUserId ? lookups.user.get(task.assigneeUserId)?.name : `semua ${task.assigneeRole}`;
-  const target = task.kind === 'kejar_spk' || task.kind === 'urus_spk_salah'
-    ? (task.kind === 'kejar_spk' ? `/spk/input?fpk=${task.refId}` : `/spk/${task.refId}/revisi`)
+  const target = task.kind === 'kejar_spk' ? `/spk/input?fpk=${task.refId}`
+    : task.kind === 'urus_spk_salah' ? `/spk/${task.refId}/revisi`
+    : task.kind === 'memo' && task.refType === 'spk' ? `/memo/baru?spk=${task.refId}`
+    : task.kind === 'input_spk_perpanjangan' ? `/spk/input?induk=${task.refId}`
     : refLink(task);
   return (
     <div className={cx('bg-white border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3', esc.overdue ? 'border-rose-300' : 'border-slate-200')}>
@@ -62,9 +135,15 @@ export const TaskCard: React.FC<{ task: Task; reason: TaskReason; esc: Escalatio
           {task.customEscalation && <span>{task.customEscalation}</span>}
         </div>
       </div>
-      <Btn size="sm" onClick={() => navigate(target)} icon={<ArrowRight className="w-3.5 h-3.5" />} className="shrink-0 self-start sm:self-center">
-        {ACTION_LABEL[task.kind] ?? 'Buka'}
-      </Btn>
+      <div className="flex flex-wrap gap-1.5 shrink-0 self-start sm:self-center">
+        {canMove && <Btn size="sm" variant="ghost" icon={<Shuffle className="w-3.5 h-3.5" />} onClick={() => setModal('move')}>Alihkan</Btn>}
+        {MANUAL_KINDS.includes(task.kind) && <Btn size="sm" variant="success" icon={<CheckSquare className="w-3.5 h-3.5" />} onClick={() => setModal('done')}>Selesaikan</Btn>}
+        <Btn size="sm" variant={MANUAL_KINDS.includes(task.kind) ? 'secondary' : 'primary'} onClick={() => navigate(target)} icon={<ArrowRight className="w-3.5 h-3.5" />}>
+          {ACTION_LABEL[task.kind] ?? 'Buka'}
+        </Btn>
+      </div>
+      {modal === 'done' && <CompleteModal task={task} onClose={() => setModal(null)} />}
+      {modal === 'move' && <ReassignModal task={task} onClose={() => setModal(null)} />}
     </div>
   );
 };

@@ -44,3 +44,31 @@ export const compareSpkFpk = (
   });
   return rows;
 };
+
+/** Perpanjangan tanpa FPK induk (SPK induk data awal): bandingkan dengan SPK induk dan memo yang disetujui klien. */
+export const compareSpkParent = (
+  s: Spk,
+  parent: Spk,
+  expected: { periodStart: string; periodEnd: string; value: number } | undefined,
+  names: { company: (id: string) => string; site: (id: string) => string; position: (id: string) => string; date: (d: string) => string; rp: (n: number) => string },
+): FieldDiff[] => {
+  const rows: FieldDiff[] = [
+    { field: 'PT', spk: names.company(s.companyId), fpk: names.company(parent.companyId), same: s.companyId === parent.companyId },
+    { field: 'Site', spk: names.site(s.siteId), fpk: names.site(parent.siteId), same: s.siteId === parent.siteId },
+  ];
+  if (expected) {
+    rows.push(
+      { field: 'Periode mulai (memo)', spk: names.date(s.periodStart), fpk: names.date(expected.periodStart), same: s.periodStart === expected.periodStart },
+      { field: 'Periode selesai (memo)', spk: names.date(s.periodEnd), fpk: names.date(expected.periodEnd), same: s.periodEnd === expected.periodEnd },
+      { field: 'Nilai per bulan (memo)', spk: names.rp(s.monthlyValue), fpk: names.rp(expected.value), same: s.monthlyValue === expected.value, money: true },
+    );
+  }
+  s.lines.forEach(l => {
+    const pl = parent.lines.find(x => x.positionId === l.positionId && x.shift === l.shift);
+    rows.push({
+      field: `Baris: ${names.position(l.positionId)} · ${l.shift}`, spk: `${l.qty} orang`,
+      fpk: pl ? `${pl.qty} orang (SPK induk)` : 'tidak ada di SPK induk', same: !!pl && pl.qty === l.qty,
+    });
+  });
+  return rows;
+};

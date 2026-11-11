@@ -22,6 +22,12 @@ export const escalationOf = (t: Task, settings: Setting[], holidays: Holiday[], 
       ? { overdue, daysLate: late, level: 2, label: 'Lewat 30 hari: eskalasi BOD' }
       : { overdue, daysLate: 0, level: 0 };
   }
+  if (t.kind === 'memo' || t.kind === 'kirim_memo') {
+    return overdue ? { overdue, daysLate: late, level: 2, label: 'Memo belum terkirim di H-60: eskalasi BOD' } : { overdue, daysLate: 0, level: 0 };
+  }
+  if (t.kind === 'catat_jawaban') {
+    return overdue ? { overdue, daysLate: late, level: 2, label: 'Belum dijawab di H-30: eskalasi BOD' } : { overdue, daysLate: 0, level: 0 };
+  }
   if (t.kind === 'urus_spk_salah') {
     return overdue ? { overdue, daysLate: late, level: 2, label: 'Lewat 14 hari: BOD turun tangan' } : { overdue, daysLate: 0, level: 0 };
   }
@@ -103,6 +109,11 @@ export const TASK_KIND_LABEL: Record<Task['kind'], string> = {
   margin_spk: 'Margin SPK di bawah minimum',
   memo: 'Memo eksternal',
   setujui_memo: 'Persetujuan memo',
+  cek_margin_memo: 'Cek margin memo',
+  kirim_memo: 'Kirim memo',
+  catat_jawaban: 'Jawaban klien',
+  input_spk_perpanjangan: 'Input SPK perpanjangan',
+  info_invoice_akhir: 'Invoice terakhir',
   cari_pengganti: 'Cari pengganti',
   demobilisasi: 'Demobilisasi',
 };

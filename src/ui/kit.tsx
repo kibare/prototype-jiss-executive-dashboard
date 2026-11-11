@@ -89,15 +89,26 @@ export const Money: React.FC<{ value?: number; clientId?: string; className?: st
   return <span className={cx('tabular-nums', className)}>{value === undefined ? '–' : fmtRp(value)}</span>;
 };
 
-export const AttachmentChip: React.FC<{ a: Attachment; clientId?: string }> = ({ a, clientId }) => {
-  const { access } = useStore();
+export const AttachmentChip: React.FC<{ a: Attachment; clientId?: string; entity?: string; entityId?: string }> = ({ a, clientId, entity = 'lampiran', entityId = a.id }) => {
+  const { access, actions } = useStore();
   const allowed = access.attachment(a, clientId);
+  const open = () => {
+    if (!allowed) return;
+    if (a.priced) actions.openAttachment(a.fileName, entity, entityId);
+    toast(`Pratinjau ${a.fileName} (simulasi)${a.priced ? ' · akses dicatat di audit log' : ''}`);
+  };
   return (
-    <span className={cx('inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs', allowed ? 'border-slate-200 bg-slate-50 text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400')}>
-      {allowed ? <Paperclip className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-      <span className="font-medium">{a.kind}:</span>
-      <span className="truncate max-w-[180px]">{allowed ? a.fileName : 'berisi harga, tidak bisa dibuka'}</span>
-    </span>
+    <button
+      type="button"
+      onClick={open}
+      disabled={!allowed}
+      title={allowed ? 'Buka lampiran' : 'Lampiran berisi harga: hanya Marketing pemegang klien, Finance, BOD (dan Pengadaan untuk BOQ)'}
+      className={cx('inline-flex items-center gap-1.5 px-2 py-1 rounded-md border text-xs text-left max-w-full', allowed ? 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-indigo-50 hover:border-indigo-200' : 'border-slate-200 bg-slate-50 text-slate-400 cursor-not-allowed')}
+    >
+      {allowed ? <Paperclip className="w-3 h-3 shrink-0" /> : <Lock className="w-3 h-3 shrink-0" />}
+      <span className="font-medium shrink-0">{a.kind}:</span>
+      <span className="truncate">{allowed ? a.fileName : 'berisi harga, tidak bisa dibuka'}</span>
+    </button>
   );
 };
 

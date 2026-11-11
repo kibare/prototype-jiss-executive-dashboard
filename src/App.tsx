@@ -25,6 +25,7 @@ import { SpkDetailPage } from './pages/spk/SpkDetail';
 import { SpkFormPage } from './pages/spk/SpkForm';
 import { WithoutSpkPage } from './pages/spk/WithoutSpk';
 import { SecurityPage, SecurityDetail } from './pages/people/Security';
+import { MemoListPage, MemoNewPage, MemoDetailPage } from './pages/memo/Memo';
 
 type Route = { path: string; perm: Perm; render: (p: Record<string, string>) => React.ReactNode };
 
@@ -40,7 +41,9 @@ const ROUTES: Route[] = [
   { path: '/spk/:id/revisi', perm: 'spk.input', render: p => <SpkFormPage reviseId={p.id} /> },
   { path: '/spk/:id', perm: 'spk.view', render: p => <SpkDetailPage id={p.id} /> },
   { path: '/jalan-tanpa-spk', perm: 'spk.view', render: () => <WithoutSpkPage /> },
-  { path: '/memo', perm: 'memo.view', render: () => <Soon title="Memo eksternal" note="Alur memo H-75 (pilih jenis, cek margin, BOD, kirim, jawaban klien) masuk tahap berikutnya." /> },
+  { path: '/memo', perm: 'memo.view', render: () => <MemoListPage /> },
+  { path: '/memo/baru', perm: 'spk.input', render: () => <MemoNewPage /> },
+  { path: '/memo/:id', perm: 'memo.view', render: p => <MemoDetailPage id={p.id} /> },
   { path: '/area', perm: 'master.view', render: () => <AreasPage /> },
   { path: '/area/:id', perm: 'master.view', render: p => <AreaDetail id={p.id} /> },
   { path: '/klien', perm: 'master.view', render: () => <ClientsPage /> },

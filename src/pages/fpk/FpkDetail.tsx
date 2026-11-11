@@ -181,7 +181,7 @@ export const FpkDetailPage: React.FC<{ id: string }> = ({ id }) => {
           </Card>
           <Card title="Lampiran">
             <div className="flex flex-col gap-1.5">
-              {v.attachments.map(a => <AttachmentChip key={a.id} a={a} clientId={v.clientId} />)}
+              {v.attachments.map(a => <AttachmentChip key={a.id} a={a} clientId={v.clientId} entity="fpk" entityId={f.id} />)}
               {!v.attachments.some(a => a.kind === 'Bukti deal') && <span className="text-xs text-rose-600">Bukti deal belum dilampirkan</span>}
             </div>
           </Card>

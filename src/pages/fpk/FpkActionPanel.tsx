@@ -164,7 +164,7 @@ const FinancePanel: React.FC<{ f: Fpk }> = ({ f }) => {
   const margin = cost > 0 ? Math.round(((v.monthlyValue - cost) / v.monthlyValue) * 1000) / 10 : null;
   return (
     <Card title="Cek margin Finance">
-      <div className="flex flex-wrap gap-2 mb-3">{v.attachments.filter(a => a.kind === 'BOQ').map(a => <AttachmentChip key={a.id} a={a} clientId={v.clientId} />)}</div>
+      <div className="flex flex-wrap gap-2 mb-3">{v.attachments.filter(a => a.kind === 'BOQ').map(a => <AttachmentChip key={a.id} a={a} clientId={v.clientId} entity="fpk" entityId={f.id} />)}</div>
       <div className="grid sm:grid-cols-3 gap-3">
         <Field label="Nilai per bulan"><div className="py-2 font-semibold"><Money value={v.monthlyValue} clientId={v.clientId} /></div></Field>
         <Field label="Estimasi biaya per bulan (Rp)" required><Input type="number" min={0} value={cost || ''} onChange={e => setCost(Number(e.target.value))} /></Field>
