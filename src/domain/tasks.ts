@@ -1,5 +1,5 @@
 // Mesin tugas: penerima, batas waktu, dan eskalasi (PRD bagian Notifikasi).
-import type { Delegation, Division, Holiday, Role, Setting, SiteAssignment, Task, User } from './types';
+import type { Delegation, Division, Holiday, Role, Setting, Site, SiteAssignment, Task, User } from './types';
 import { TODAY, addWorkdays, diffDays } from './time';
 import { settingNum } from './settings';
 import { has, isDelegationActive } from './rbac';
@@ -83,11 +83,18 @@ export const resolveAssignee = (
   siteId: string | undefined,
   assignments: SiteAssignment[],
   users: User[],
+  sites: Site[] = [],
 ): string | undefined => {
   const bySite = siteId ? assignments.find(a => a.siteId === siteId && a.division === division) : undefined;
   if (bySite) return bySite.userId;
   const byClient = assignments.find(a => a.clientId === clientId && !a.siteId && a.division === division);
   if (byClient) return byClient.userId;
+  // Operasional dibatasi lingkup area: pilih Ops yang memegang area site ini sebelum jatuh ke kepala divisi.
+  if (division === 'Operasional' && siteId) {
+    const areaId = sites.find(s => s.id === siteId)?.areaId;
+    const ops = users.find(u => u.active && u.roles.includes('Operasional') && !!areaId && u.areaIds.includes(areaId));
+    if (ops) return ops.id;
+  }
   return users.find(u => u.active && u.headOf.includes(division as Role))?.id;
 };
 

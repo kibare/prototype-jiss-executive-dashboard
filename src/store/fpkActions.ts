@@ -43,7 +43,7 @@ const headOf = (tx: Tx, role: Role) => tx.s.users.find(u => u.active && u.headOf
 
 const assigneeFor = (tx: Tx, f: Fpk, d: Division) => {
   const v = latest(f);
-  return resolveAssignee(d, v.clientId, v.siteId, tx.s.assignments, tx.s.users);
+  return resolveAssignee(d, v.clientId, v.siteId, tx.s.assignments, tx.s.users, tx.s.sites);
 };
 
 /** Pihak yang diberi info hasil keputusan: divisi terkait + PIC area + Marketing pemegang klien. */

@@ -38,7 +38,7 @@ const refreshFpk = (tx: Tx, f: Fpk) => {
 };
 
 const financeVerifier = (tx: Tx, s: Spk) => {
-  const preferred = resolveAssignee('Finance', s.clientId, s.siteId, tx.s.assignments, tx.s.users);
+  const preferred = resolveAssignee('Finance', s.clientId, s.siteId, tx.s.assignments, tx.s.users, tx.s.sites);
   if (preferred && preferred !== s.inputBy) return preferred;
   return tx.s.users.find(u => u.active && u.roles.includes('Finance') && u.id !== s.inputBy)?.id;
 };
@@ -161,7 +161,7 @@ export function buildSpkActions(exec: (fn: (tx: Tx) => Result) => Result) {
       const due = addWorkdays(TODAY, 2, tx.s.holidays);
       (['Operasional', 'Recruitment', 'Pengadaan'] as const).forEach(d => tx.addTask({
         kind: 'penyesuaian_fpk', title: `Sesuaikan dengan ${nf.number} (SPK benar tapi beda dari FPK)`, refType: 'fpk', refId: nf.id,
-        assigneeRole: d, assigneeUserId: resolveAssignee(d, s.clientId, s.siteId, tx.s.assignments, tx.s.users), division: d, dueAt: due,
+        assigneeRole: d, assigneeUserId: resolveAssignee(d, s.clientId, s.siteId, tx.s.assignments, tx.s.users, tx.s.sites), division: d, dueAt: due,
       }));
       tx.audit({ entity: 'fpk', entityId: nf.id, action: `FPK perubahan dibuat dari isi ${s.number}`, after: reason });
       const min = num(tx, 'margin.minimum_pct', 10);

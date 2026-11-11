@@ -36,7 +36,7 @@ const notContinuing = (tx: Tx, m: Memo, s: Spk) => {
   const site = tx.s.sites.find(x => x.id === s.siteId);
   tx.addTask({ kind: 'demobilisasi', title: `Demobilisasi ${site?.name}: tarik personel sebelum ${fmtDate(s.periodEnd)}`, refType: 'memo', refId: m.id, assigneeRole: 'Operasional', assigneeUserId: opsForArea(tx, site?.areaId ?? ''), division: 'Operasional', dueAt: s.periodEnd });
   tx.addTask({ kind: 'demobilisasi', title: `Demobilisasi ${site?.name}: akhiri penempatan per ${fmtDate(s.periodEnd)}`, refType: 'memo', refId: m.id, assigneeRole: 'HR', assigneeUserId: headOf(tx, 'HR'), dueAt: s.periodEnd });
-  const fin = resolveAssignee('Finance', s.clientId, s.siteId, tx.s.assignments, tx.s.users);
+  const fin = resolveAssignee('Finance', s.clientId, s.siteId, tx.s.assignments, tx.s.users, tx.s.sites);
   tx.notify(`${label(tx, s)} tidak dilanjutkan. Siapkan invoice terakhir sampai ${fmtDate(s.periodEnd)}.`, [fin, headOf(tx, 'Finance')], { refType: 'memo', refId: m.id });
 };
 
@@ -44,7 +44,7 @@ const stakeholders = (tx: Tx, s: Spk) => {
   const site = tx.s.sites.find(x => x.id === s.siteId);
   const area = tx.s.areas.find(a => a.id === site?.areaId);
   return [
-    ...(['Operasional', 'Recruitment', 'Pengadaan', 'Finance'] as const).map(d => resolveAssignee(d, s.clientId, s.siteId, tx.s.assignments, tx.s.users)),
+    ...(['Operasional', 'Recruitment', 'Pengadaan', 'Finance'] as const).map(d => resolveAssignee(d, s.clientId, s.siteId, tx.s.assignments, tx.s.users, tx.s.sites)),
     area?.picUserId, clientOf(tx, s)?.accountOwnerId,
   ];
 };
@@ -101,7 +101,7 @@ export function buildMemoActions(exec: (fn: (tx: Tx) => Result) => Result) {
     if (boqName) v.boq = { id: tx.id('at'), kind: 'BOQ', fileName: boqName, priced: true, uploadedBy: tx.me.id, uploadedAt: NOW };
     if (priceChange) {
       m.status = 'cek_margin';
-      tx.addTask({ kind: 'cek_margin_memo', title: `Cek margin memo ${label(tx, s)}`, refType: 'memo', refId: m.id, assigneeRole: 'Finance', assigneeUserId: resolveAssignee('Finance', s.clientId, s.siteId, tx.s.assignments, tx.s.users), division: 'Finance', dueAt: wd(tx, num(tx, 'fpk.margin_check_due_workdays', 1)) });
+      tx.addTask({ kind: 'cek_margin_memo', title: `Cek margin memo ${label(tx, s)}`, refType: 'memo', refId: m.id, assigneeRole: 'Finance', assigneeUserId: resolveAssignee('Finance', s.clientId, s.siteId, tx.s.assignments, tx.s.users, tx.s.sites), division: 'Finance', dueAt: wd(tx, num(tx, 'fpk.margin_check_due_workdays', 1)) });
       tx.audit({ entity: 'memo', entityId: m.id, action: `Versi ${v.no}: draf → cek margin`, after: `Nilai baru Rp ${newValue.toLocaleString('id-ID')}`, hasMoney: true });
     } else {
       m.status = 'menunggu_bod';
